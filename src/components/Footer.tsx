@@ -13,7 +13,7 @@ const Footer = () => {
                 <Code2 className="h-6 w-6 text-primary-foreground" />
               </div>
               <span className="text-xl font-bold bg-gradient-primary bg-clip-text text-transparent">
-                ProjectHub
+                TechProjectHub
               </span>
             </Link>
             <p className="text-sm text-muted-foreground">
@@ -33,6 +33,11 @@ const Footer = () => {
               <li>
                 <Link to="/projects" className="text-sm text-muted-foreground hover:text-primary transition-all duration-300 hover:translate-x-1 inline-block">
                   Projects
+                </Link>
+              </li>
+              <li>
+                <Link to="/about" className="text-sm text-muted-foreground hover:text-primary transition-all duration-300 hover:translate-x-1 inline-block">
+                  About Us
                 </Link>
               </li>
               <li>
@@ -89,7 +94,7 @@ const Footer = () => {
         <div className="mt-12 pt-8 border-t border-border">
           <div className="flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
             <p className="text-sm text-muted-foreground">
-              © 2024 ProjectHub. All rights reserved.
+              © 2024 TechProjectHub. All rights reserved.
             </p>
             <div className="flex space-x-6">
               <Link to="/privacy" className="text-sm text-muted-foreground hover:text-primary transition-all duration-300 hover:scale-110">

@@ -70,13 +70,13 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-gradient-hero">
       <Header />
-      
+
       {/* Hero Section */}
       <section className="relative overflow-hidden">
         <div className="absolute inset-0 z-0">
-          <img 
-            src={heroBg} 
-            alt="Hero Background" 
+          <img
+            src={heroBg}
+            alt="Hero Background"
             className="w-full h-full object-cover opacity-10"
           />
         </div>
@@ -89,7 +89,7 @@ const Index = () => {
               </span>
             </h1>
             <p className="text-lg md:text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
-              Power BI, Machine Learning, Deep Learning & Web Development projects. 
+              Power BI, Machine Learning, Deep Learning & Web Development projects.
               Complete with code, documentation, and video explanations.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
@@ -166,7 +166,7 @@ const Index = () => {
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12 animate-fade-in">
             <h2 className="text-3xl md:text-4xl font-bold mb-4">
-              Why Choose ProjectHub?
+              Why Choose TechProjectHub?
             </h2>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
               Quality, affordability, and support - all in one place
@@ -174,7 +174,7 @@ const Index = () => {
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 animate-fade-in-up">
             {benefits.map((benefit, index) => (
-              <div 
+              <div
                 key={benefit.title}
                 className="text-center group"
                 style={{ animationDelay: `${index * 0.1}s` }}

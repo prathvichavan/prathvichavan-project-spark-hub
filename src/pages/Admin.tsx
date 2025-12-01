@@ -17,7 +17,7 @@ const Admin = () => {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
-  
+
   const [formData, setFormData] = useState({
     title: "",
     short_description: "",
@@ -25,7 +25,7 @@ const Admin = () => {
     price: "",
     category: "",
   });
-  
+
   const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
   const [zipFile, setZipFile] = useState<File | null>(null);
 
@@ -49,7 +49,7 @@ const Admin = () => {
       });
 
     if (error) throw error;
-    
+
     const { data: { publicUrl } } = supabase.storage
       .from(bucket)
       .getPublicUrl(data.path);
@@ -59,7 +59,7 @@ const Admin = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!thumbnailFile || !zipFile) {
       toast({
         title: "Error",
@@ -126,7 +126,7 @@ const Admin = () => {
       setThumbnailFile(null);
       setZipFile(null);
       setUploadProgress(0);
-      
+
     } catch (error: any) {
       toast({
         title: "Error",
@@ -141,13 +141,13 @@ const Admin = () => {
   return (
     <div className="min-h-screen bg-gradient-hero">
       <Header />
-      
+
       <section className="py-16">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-4xl">
           <Card className="border-2">
             <CardHeader>
               <CardTitle className="text-3xl">Upload New Project</CardTitle>
-              <CardDescription>Add a new project to ProjectHub</CardDescription>
+              <CardDescription>Add a new project to TechProjectHub</CardDescription>
             </CardHeader>
             <CardContent>
               <form onSubmit={handleSubmit} className="space-y-6">
@@ -164,8 +164,8 @@ const Admin = () => {
 
                 <div className="space-y-2">
                   <Label htmlFor="category">Category *</Label>
-                  <Select 
-                    value={formData.category} 
+                  <Select
+                    value={formData.category}
                     onValueChange={(value) => handleInputChange("category", value)}
                     required
                   >
@@ -249,7 +249,7 @@ const Admin = () => {
                       <span>{uploadProgress}%</span>
                     </div>
                     <div className="w-full bg-secondary rounded-full h-2.5">
-                      <div 
+                      <div
                         className="bg-primary h-2.5 rounded-full transition-all duration-300"
                         style={{ width: `${uploadProgress}%` }}
                       />
@@ -257,9 +257,9 @@ const Admin = () => {
                   </div>
                 )}
 
-                <Button 
-                  type="submit" 
-                  className="w-full" 
+                <Button
+                  type="submit"
+                  className="w-full"
                   disabled={isLoading}
                 >
                   {isLoading ? (

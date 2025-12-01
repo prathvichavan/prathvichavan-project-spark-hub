@@ -15,7 +15,7 @@ const Header = () => {
               <Code2 className="h-6 w-6 text-primary-foreground" />
             </div>
             <span className="text-xl font-bold bg-gradient-primary bg-clip-text text-transparent transition-all duration-300 group-hover:scale-105">
-              ProjectHub
+              TechProjectHub
             </span>
           </Link>
 
