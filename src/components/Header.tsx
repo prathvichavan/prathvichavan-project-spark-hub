@@ -2,9 +2,16 @@ import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Code2, Menu, X } from "lucide-react";
 import { useState } from "react";
+import { useAuth } from "@/components/AuthProvider";
 
 const Header = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const { session, signOut } = useAuth();
+
+  const handleSignOut = async () => {
+    await signOut();
+    setMobileMenuOpen(false);
+  };
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 animate-slide-in">
@@ -33,10 +40,26 @@ const Header = () => {
           </nav>
 
           <div className="hidden md:flex items-center space-x-4">
-            <Button asChild variant="outline" size="sm" className="hover:scale-105 transition-all duration-300">
-              <Link to="/contact">Get Support</Link>
-            </Button>
-            <Button asChild size="sm" className="shadow-primary hover:shadow-secondary hover:scale-105 transition-all duration-300">
+            {session ? (
+              <>
+                <Button asChild variant="ghost" size="sm" className="hover:scale-105 transition-all duration-300">
+                  <Link to="/dashboard">Dashboard</Link>
+                </Button>
+                <Button onClick={() => signOut()} variant="outline" size="sm" className="hover:scale-105 transition-all duration-300">
+                  Logout
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button asChild variant="ghost" size="sm" className="hover:scale-105 transition-all duration-300">
+                  <Link to="/auth/login">Login</Link>
+                </Button>
+                <Button asChild size="sm" className="shadow-primary hover:shadow-secondary hover:scale-105 transition-all duration-300">
+                  <Link to="/auth/signup">Sign Up</Link>
+                </Button>
+              </>
+            )}
+            <Button asChild size="sm" className="hidden lg:inline-flex shadow-primary hover:shadow-secondary hover:scale-105 transition-all duration-300">
               <Link to="/projects">Browse Projects</Link>
             </Button>
           </div>
@@ -80,11 +103,31 @@ const Header = () => {
                 Contact
               </Link>
               <div className="pt-4 space-y-2">
-                <Button asChild variant="outline" size="sm" className="w-full hover:scale-105 transition-all duration-300">
-                  <Link to="/contact" onClick={() => setMobileMenuOpen(false)}>
-                    Get Support
-                  </Link>
-                </Button>
+                {session ? (
+                  <>
+                    <Button asChild variant="ghost" size="sm" className="w-full hover:scale-105 transition-all duration-300">
+                      <Link to="/dashboard" onClick={() => setMobileMenuOpen(false)}>
+                        Dashboard
+                      </Link>
+                    </Button>
+                    <Button onClick={handleSignOut} variant="outline" size="sm" className="w-full hover:scale-105 transition-all duration-300">
+                      Logout
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <Button asChild variant="ghost" size="sm" className="w-full hover:scale-105 transition-all duration-300">
+                      <Link to="/auth/login" onClick={() => setMobileMenuOpen(false)}>
+                        Login
+                      </Link>
+                    </Button>
+                    <Button asChild size="sm" className="w-full shadow-primary hover:shadow-secondary hover:scale-105 transition-all duration-300">
+                      <Link to="/auth/signup" onClick={() => setMobileMenuOpen(false)}>
+                        Sign Up
+                      </Link>
+                    </Button>
+                  </>
+                )}
                 <Button asChild size="sm" className="w-full shadow-primary hover:shadow-secondary hover:scale-105 transition-all duration-300">
                   <Link to="/projects" onClick={() => setMobileMenuOpen(false)}>
                     Browse Projects
