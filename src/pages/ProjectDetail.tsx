@@ -1,5 +1,7 @@
 import { useState } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
+import { useAuth } from "@/components/AuthProvider";
+import { useToast } from "@/hooks/use-toast";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import WhatsAppButton from "@/components/WhatsAppButton";
@@ -42,7 +44,20 @@ const ProjectDetail = () => {
     );
   }
 
+  const navigate = useNavigate();
+  const { session } = useAuth();
+  const { toast } = useToast();
+
   const handleBuyNow = () => {
+    if (!session) {
+      toast({
+        title: "Authentication Required",
+        description: "Please login or sign up to purchase this project.",
+        variant: "destructive",
+      });
+      navigate("/auth/login");
+      return;
+    }
     setPaymentDialogOpen(true);
   };
 
@@ -156,8 +171,8 @@ const ProjectDetail = () => {
               </div>
 
               <div className="space-y-3 mb-6">
-                <Button 
-                  size="lg" 
+                <Button
+                  size="lg"
                   className="w-full shadow-primary"
                   onClick={handleBuyNow}
                 >
@@ -199,12 +214,13 @@ const ProjectDetail = () => {
 
       <Footer />
       <WhatsAppButton />
-      
-      <PaymentDialog 
+
+      <PaymentDialog
         open={paymentDialogOpen}
         onOpenChange={setPaymentDialogOpen}
         projectTitle={project.title}
         amount={project.price}
+        projectId={project.id}
       />
     </div>
   );
