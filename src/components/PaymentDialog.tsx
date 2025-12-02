@@ -1,35 +1,37 @@
+
 import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/components/AuthProvider";
 
 interface PaymentDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   projectTitle: string;
   amount: number;
-  projectId: string; // <-- ADD THIS (required for download redirect)
+  projectId: string;
 }
 
 const PaymentDialog = ({ open, onOpenChange, projectTitle, amount, projectId }: PaymentDialogProps) => {
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const { session } = useAuth();
+  const user = session?.user;
 
-  // Load Razorpay script
-  const loadRazorpay = () => {
+  const loadRazorpayScript = (src: string) => {
     return new Promise((resolve) => {
       const script = document.createElement("script");
-      script.src = "https://checkout.razorpay.com/v1/checkout.js";
+      script.src = src;
       script.onload = () => resolve(true);
       script.onerror = () => resolve(false);
       document.body.appendChild(script);
     });
   };
 
-  // Start Payment
-  const startPayment = async () => {
+  const handlePayment = async () => {
     if (!termsAccepted) {
       toast.error("Please accept the terms and conditions");
       return;
@@ -37,65 +39,84 @@ const PaymentDialog = ({ open, onOpenChange, projectTitle, amount, projectId }: 
 
     setIsProcessing(true);
 
-    const isLoaded = await loadRazorpay();
-    if (!isLoaded) {
-      toast.error("Razorpay SDK failed to load");
-      setIsProcessing(false);
-      return;
-    }
-
-    // CALL SUPABASE EDGE FUNCTION
-    const res = await fetch(
-      "https://bgawccnumjzdobswnvkq.supabase.co/functions/v1/create-order",
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ amount }),
+    try {
+      const isLoaded = await loadRazorpayScript("https://checkout.razorpay.com/v1/checkout.js");
+      if (!isLoaded) {
+        throw new Error("Razorpay SDK failed to load");
       }
-    );
 
-    const order = await res.json();
+      // 1. Create Order
+      const { data: orderData, error: orderError } = await supabase.functions.invoke('create-order', {
+        body: { amount, projectId }
+      });
 
-    if (!order.id) {
-      toast.error("Failed to create Razorpay order");
+      if (orderError) {
+        console.error("Order Creation Error:", orderError);
+        throw new Error("Failed to create order. Please try again.");
+      }
+
+      if (!orderData || !orderData.orderId) {
+        throw new Error("Invalid order data received from server");
+      }
+
+      // 2. Open Razorpay
+      const options = {
+        key: orderData.key, // Key from server
+        amount: orderData.amount.toString(),
+        currency: orderData.currency,
+        name: "TechProjectHub",
+        description: `Purchase: ${projectTitle}`,
+        image: window.location.origin + "/logo.png",
+        order_id: orderData.orderId,
+        prefill: {
+          name: user?.user_metadata?.full_name || user?.email,
+          email: user?.email,
+          contact: user?.phone || "",
+        },
+        theme: {
+          color: "#4f46e5",
+        },
+        handler: async function (response: any) {
+          try {
+            // 3. Verify Payment
+            const { data: verifyData, error: verifyError } = await supabase.functions.invoke('verify-payment', {
+              body: {
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_signature: response.razorpay_signature,
+                dbOrderId: orderData.dbOrderId
+              }
+            });
+
+            if (verifyError || !verifyData.success) {
+              throw new Error("Payment verification failed");
+            }
+
+            toast.success("Payment Successful!");
+            window.location.href = `/payment/success?payment_id=${response.razorpay_payment_id}&project_id=${projectId}`;
+
+          } catch (err: any) {
+            console.error("Verification Error:", err);
+            toast.error("Payment verification failed. Please contact support.");
+            window.location.href = `/payment/failed?error_description=${encodeURIComponent(err.message)}`;
+          }
+        },
+        modal: {
+          ondismiss: function () {
+            setIsProcessing(false);
+            toast("Payment cancelled");
+          }
+        }
+      };
+
+      const paymentObject = new window.Razorpay(options);
+      paymentObject.open();
+
+    } catch (error: any) {
+      console.error("Payment Error:", error);
+      toast.error(error.message || "Something went wrong");
       setIsProcessing(false);
-      return;
     }
-
-    // RAZORPAY OPTIONS
-    const options: any = {
-      key: import.meta.env.VITE_RAZORPAY_KEY_ID,
-      amount: order.amount,
-      currency: "INR",
-      name: "TechProjectHub",
-      description: projectTitle,
-      image: window.location.origin + "/logo.png",
-      order_id: order.id,
-
-      handler: async function (response: any) {
-        // SAVE PAYMENT IN SUPABASE
-        await supabase.from("payments").insert({
-          project_id: projectId,
-          payment_id: response.razorpay_payment_id,
-          order_id: response.razorpay_order_id,
-          signature: response.razorpay_signature,
-        });
-
-        toast.success("Payment Successful!");
-
-        // REDIRECT TO DOWNLOAD PAGE
-        window.location.href = `/download/${projectId}`;
-      },
-
-      theme: {
-        color: "#4f46e5", // fixed spelling
-      },
-    };
-
-    const rzp = new (window as any).Razorpay(options);
-    rzp.open();
-
-    setIsProcessing(false);
   };
 
   return (
@@ -126,7 +147,7 @@ const PaymentDialog = ({ open, onOpenChange, projectTitle, amount, projectId }: 
         <Button
           className="w-full mt-4"
           size="lg"
-          onClick={startPayment}
+          onClick={handlePayment}
           disabled={isProcessing}
         >
           {isProcessing ? "Processing..." : "Pay Now"}

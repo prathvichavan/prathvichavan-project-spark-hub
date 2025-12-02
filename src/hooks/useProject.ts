@@ -11,9 +11,15 @@ export const useProject = (id: string) => {
         .from("projects")
         .select("*")
         .eq("id", id)
-        .single();
+        .maybeSingle();
 
-      if (error) throw error;
+      if (error) {
+        console.error("Supabase Error:", error);
+        throw error;
+      }
+
+      if (!data) return null;
+
 
       // ⭐ Tell TypeScript these fields exist
       type ProjectType = {
