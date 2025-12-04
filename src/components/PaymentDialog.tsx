@@ -66,7 +66,7 @@ const PaymentDialog = ({ open, onOpenChange, projectTitle, amount, projectId }: 
         currency: orderData.currency,
         name: "TechProjectHub",
         description: `Purchase: ${projectTitle}`,
-        image: window.location.origin + "/logo.png",
+        image: window.location.origin + "/images/blog/logo.png",
         order_id: orderData.orderId,
         prefill: {
           name: user?.user_metadata?.full_name || user?.email,

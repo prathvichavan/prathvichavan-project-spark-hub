@@ -40,7 +40,7 @@ const BlogArticle = () => {
                     "name": "TechProjectHub",
                     "logo": {
                         "@type": "ImageObject",
-                        "url": "https://techprojecthub.vercel.app/logo.png"
+                        "url": "https://techprojecthub.vercel.app/images/blog/logo.png"
                     }
                 },
                 "datePublished": article.publishDate,
