@@ -52,7 +52,25 @@ const PaymentDialog = ({ open, onOpenChange, projectTitle, amount, projectId }: 
 
       if (orderError) {
         console.error("Order Creation Error:", orderError);
-        throw new Error("Failed to create order. Please try again.");
+        // Attempt to parse the error message from the response
+        let errorMessage = "Failed to create order. Please try again.";
+        try {
+          if (orderError instanceof Error) {
+            errorMessage = orderError.message;
+          }
+          // If the error is an object with a message property (common in Supabase errors)
+          if (typeof orderError === 'object' && orderError !== null && 'message' in orderError) {
+            errorMessage = (orderError as any).message;
+          }
+          // Sometimes the body is in the context
+          if ((orderError as any).context && (orderError as any).context.json) {
+            const body = await (orderError as any).context.json();
+            if (body.error) errorMessage = body.error;
+          }
+        } catch (e) {
+          console.error("Error parsing error response:", e);
+        }
+        throw new Error(errorMessage);
       }
 
       if (!orderData || !orderData.orderId) {
