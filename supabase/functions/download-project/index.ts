@@ -43,19 +43,8 @@ serve(async (req) => {
             )
         }
 
-        // Log the download
-        const { error: logError } = await supabaseClient
-            .from('downloads')
-            .insert({
-                project_id: projectId,
-                user_email: user.email,
-                created_at: new Date().toISOString()
-            });
-
-        if (logError) {
-            console.error("Error logging download:", logError);
-            // We don't block the download if logging fails, but it's good to know
-        }
+        // We already verified the user owns the project (download record exists).
+        // No need to insert another record into 'downloads' table as it tracks ownership, not download logs.
 
         // Generate Public URL
         // The user specifically requested the path: project-files/project-files/{projectId}/project.zip
