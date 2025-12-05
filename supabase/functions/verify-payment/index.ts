@@ -67,6 +67,39 @@ serve(async (req: Request) => {
                 throw insertError;
             }
 
+            // Get order details to fetch user_id
+            const { data: orderDataRel, error: orderRelError } = await supabaseClient
+                .from('orders')
+                .select('user_id, project_id')
+                .eq('id', dbOrderId)
+                .single();
+
+            if (orderRelError) {
+                console.error("Error fetching order details:", orderRelError);
+            } else if (orderDataRel) {
+                // Fetch user email
+                const { data: userData, error: userError } = await supabaseClient.auth.admin.getUserById(orderDataRel.user_id);
+
+                if (userError) {
+                    console.error("Error fetching user:", userError);
+                } else if (userData && userData.user) {
+                    // Insert into downloads table
+                    const { error: downloadError } = await supabaseClient
+                        .from('downloads')
+                        .insert([
+                            {
+                                project_id: orderDataRel.project_id,
+                                user_email: userData.user.email,
+                                created_at: new Date().toISOString()
+                            }
+                        ]);
+
+                    if (downloadError) {
+                        console.error("Error inserting download record:", downloadError);
+                    }
+                }
+            }
+
             return new Response(
                 JSON.stringify({ success: true }),
                 {

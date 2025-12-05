@@ -134,12 +134,28 @@ const DownloadPage = () => {
                         <Button
                             className="w-full shadow-primary"
                             size="lg"
-                            onClick={() => {
-                                if (project?.zip_url) {
-                                    window.open(project.zip_url, '_blank');
-                                    toast.success("Download started!");
-                                } else {
-                                    toast.error("Download link not available. Please contact support.");
+                            onClick={async () => {
+                                try {
+                                    toast.loading("Preparing download...");
+                                    const { data, error } = await supabase.functions.invoke('download-project', {
+                                        body: { projectId: id }
+                                    });
+
+                                    toast.dismiss();
+
+                                    if (error) throw error;
+                                    if (data.error) throw new Error(data.error);
+
+                                    if (data.url) {
+                                        window.location.href = data.url;
+                                        toast.success("Download started!");
+                                    } else {
+                                        throw new Error("No download URL returned");
+                                    }
+                                } catch (err: any) {
+                                    toast.dismiss();
+                                    console.error("Download error:", err);
+                                    toast.error(err.message || "Download failed. Please contact support.");
                                 }
                             }}
                         >
@@ -155,9 +171,9 @@ const DownloadPage = () => {
                         </Button>
                     </div>
                 </Card>
-            </div>
+            </div >
             <Footer />
-        </div>
+        </div >
     );
 };
 
