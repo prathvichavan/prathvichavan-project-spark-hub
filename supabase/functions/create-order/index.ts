@@ -1,4 +1,4 @@
-b
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import Razorpay from "npm:razorpay@2.9.2"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
