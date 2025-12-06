@@ -1,3 +1,4 @@
 User-agent: *
 Allow: /
+
 Sitemap: https://techprojecthub.tech/sitemap.xml
