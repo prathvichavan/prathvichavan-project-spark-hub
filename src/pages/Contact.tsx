@@ -21,7 +21,7 @@ const Contact = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     // Basic validation
     if (!formData.name || !formData.email || !formData.message) {
       toast.error("Please fill in all required fields");
@@ -90,8 +90,8 @@ const Contact = () => {
                 </div>
                 <div>
                   <h3 className="font-semibold mb-1">Email Us</h3>
-                  <p className="text-sm text-muted-foreground">mr.prathvirajchavan@gmail.com</p>
-                  <p className="text-sm text-muted-foreground">We reply within 24 hours</p>
+                  <p className="text-sm text-muted-foreground">techprojecthub.tech@gmail.com</p>
+                  <p className="text-sm text-muted-foreground">Response within 24 hours</p>
                 </div>
               </div>
             </Card>
@@ -102,9 +102,9 @@ const Contact = () => {
                   <Phone className="h-6 w-6 text-primary" />
                 </div>
                 <div>
-                  <h3 className="font-semibold mb-1">Call Us</h3>
-                  <p className="text-sm text-muted-foreground">+91 9766638211</p>
-                  <p className="text-sm text-muted-foreground">Mon-Sat, 9 AM - 6 PM</p>
+                  <h3 className="font-semibold mb-1">Website</h3>
+                  <p className="text-sm text-muted-foreground">https://techprojecthub.tech</p>
+                  <p className="text-sm text-muted-foreground">TechProjectHub Support</p>
                 </div>
               </div>
             </Card>

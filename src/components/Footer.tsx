@@ -86,7 +86,7 @@ const Footer = () => {
             <ul className="space-y-3">
               <li className="flex items-center space-x-2 text-sm text-muted-foreground hover:text-primary transition-colors duration-300 group">
                 <Mail className="h-4 w-4 group-hover:scale-110 transition-transform duration-300" />
-                <span>mr.prathvirajchavan@gmail.com</span>
+                <span>techprojecthub.tech@gmail.com</span>
               </li>
               <li className="flex items-center space-x-2 text-sm text-muted-foreground hover:text-primary transition-colors duration-300 group">
                 <Phone className="h-4 w-4 group-hover:scale-110 transition-transform duration-300" />
@@ -101,15 +101,18 @@ const Footer = () => {
             <p className="text-sm text-muted-foreground">
               © 2024 TechProjectHub. All rights reserved.
             </p>
-            <div className="flex space-x-6">
-              <Link to="/privacy" className="text-sm text-muted-foreground hover:text-primary transition-all duration-300 hover:scale-110">
+            <div className="flex flex-wrap justify-center gap-6">
+              <Link to="/privacy-policy" className="text-sm text-muted-foreground hover:text-primary transition-all duration-300 hover:scale-110">
                 Privacy Policy
               </Link>
               <Link to="/terms" className="text-sm text-muted-foreground hover:text-primary transition-all duration-300 hover:scale-110">
                 Terms & Conditions
               </Link>
-              <Link to="/refund" className="text-sm text-muted-foreground hover:text-primary transition-all duration-300 hover:scale-110">
+              <Link to="/refund-policy" className="text-sm text-muted-foreground hover:text-primary transition-all duration-300 hover:scale-110">
                 Refund Policy
+              </Link>
+              <Link to="/delivery-policy" className="text-sm text-muted-foreground hover:text-primary transition-all duration-300 hover:scale-110">
+                Delivery Policy
               </Link>
             </div>
           </div>

@@ -14,6 +14,7 @@ import Privacy from "./pages/Privacy";
 import Terms from "./pages/Terms";
 import Refund from "./pages/Refund";
 import About from "./pages/About";
+import DeliveryPolicy from "./pages/DeliveryPolicy";
 import Blog from "./pages/Blog";
 import BlogArticle from "./pages/BlogArticle";
 
@@ -45,8 +46,11 @@ const App = () => (
             <Route path="/contact" element={<Contact />} />
             <Route path="/admin" element={<Admin />} />
             <Route path="/privacy" element={<Privacy />} />
+            <Route path="/privacy-policy" element={<Privacy />} />
             <Route path="/terms" element={<Terms />} />
             <Route path="/refund" element={<Refund />} />
+            <Route path="/refund-policy" element={<Refund />} />
+            <Route path="/delivery-policy" element={<DeliveryPolicy />} />
             <Route path="/about" element={<About />} />
             <Route path="/blog" element={<Blog />} />
             <Route path="/blog/:slug" element={<BlogArticle />} />
