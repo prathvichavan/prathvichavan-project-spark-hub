@@ -83,7 +83,8 @@ const PaymentDialog = ({ open, onOpenChange, projectTitle, amount, projectId }: 
           color: "#4f46e5",
         },
         // Callback URL for fallback (optional, but good for some flows)
-        // callback_url removed to ensure handler is called for verification logic
+        // Callback URL for robust server-side verification
+        callback_url: "https://techprojecthub.tech/api/verifyPayment",
 
         handler: async function (response: any) {
           try {
