@@ -4,7 +4,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { crypto } from "https://deno.land/std@0.177.0/crypto/mod.ts";
 
 const corsHeaders = {
-    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Origin': '*', // Allow all origins to avoid CORS issues on domain change
     'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 

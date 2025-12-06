@@ -72,7 +72,7 @@ const PaymentDialog = ({ open, onOpenChange, projectTitle, amount, projectId }: 
         currency: orderData.currency,
         name: "TechProjectHub",
         description: `Purchase: ${projectTitle}`,
-        image: window.location.origin + "/images/blog/logo.png",
+        image: "https://techprojecthub.tech/images/blog/logo.png", // Updated to new domain
         order_id: orderData.orderId,
         prefill: {
           name: user?.user_metadata?.full_name || user?.email,
@@ -82,8 +82,11 @@ const PaymentDialog = ({ open, onOpenChange, projectTitle, amount, projectId }: 
         theme: {
           color: "#4f46e5",
         },
+        // Callback URL for fallback (optional, but good for some flows)
+        callback_url: "https://techprojecthub.tech/payment/success",
         handler: async function (response: any) {
           try {
+            console.log("Payment success, verifying...", response);
             // 3. Verify Payment
             const { data: verifyData, error: verifyError } = await supabase.functions.invoke('verify-payment', {
               body: {
@@ -95,6 +98,7 @@ const PaymentDialog = ({ open, onOpenChange, projectTitle, amount, projectId }: 
             });
 
             if (verifyError || !verifyData.success) {
+              console.error("Verification Failed:", verifyError || verifyData);
               throw new Error("Payment verification failed");
             }
 
