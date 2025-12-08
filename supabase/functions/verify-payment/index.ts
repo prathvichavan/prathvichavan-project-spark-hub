@@ -18,7 +18,7 @@ serve(async (req: Request) => {
     try {
         const { order_id, razorpay_payment_id, razorpay_signature, user_id } = await req.json();
 
-        console.log("Verifying payment:", { order_id, razorpay_payment_id, razorpay_signature });
+        console.log("Verifying payment:", { order_id, razorpay_payment_id });
 
         const secret = Deno.env.get("RAZORPAY_KEY_SECRET");
         if (!secret) {
@@ -27,7 +27,11 @@ serve(async (req: Request) => {
 
         const generatedSignature = await generateHmacSha256(order_id + "|" + razorpay_payment_id, secret);
 
-        console.log("Signature comparison:", { generatedSignature, razorpay_signature, match: generatedSignature === razorpay_signature });
+        console.log("Signature comparison:", {
+            generatedSignature,
+            razorpay_signature,
+            match: generatedSignature === razorpay_signature
+        });
 
         if (generatedSignature !== razorpay_signature) {
             return new Response(JSON.stringify({ verified: false, error: "Signature mismatch" }), {
@@ -47,6 +51,7 @@ serve(async (req: Request) => {
             }
         );
 
+        // CRITICAL FIX: Database uses 'razorpay_order_id' column, not 'order_id'
         const { data, error } = await supabaseAdmin
             .from("orders")
             .update({
@@ -54,7 +59,7 @@ serve(async (req: Request) => {
                 payment_id: razorpay_payment_id,
                 updated_at: new Date().toISOString()
             })
-            .eq("razorpay_order_id", order_id)
+            .eq("razorpay_order_id", order_id)  // Match on razorpay_order_id column
             .select()
             .single();
 
