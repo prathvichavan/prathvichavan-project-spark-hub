@@ -94,7 +94,7 @@ const PaymentDialog = ({ open, onOpenChange, projectTitle, amount, projectId }: 
               body: {
                 order_id: response.razorpay_order_id,
                 payment_id: response.razorpay_payment_id,
-                signature: response.razorpay_signature,
+                razorpay_signature: response.razorpay_signature,
                 user_id: user?.id,
                 project_id: projectId,
               },

@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { crypto } from "https://deno.land/std@0.177.0/crypto/mod.ts";
@@ -9,68 +8,46 @@ const corsHeaders: Record<string, string> = {
 };
 
 serve(async (req: Request) => {
-    // Handle CORS preflight requests
     if (req.method === 'OPTIONS') {
         return new Response('ok', { headers: corsHeaders });
     }
 
     try {
-        const { order_id, payment_id, signature, user_id } = await req.json();
+        const { order_id, payment_id, razorpay_signature, user_id } = await req.json();
 
         console.log("Verifying payment:", { order_id, payment_id });
 
-        // 1. Verify Razorpay Signature
+        // 1) Verify signature
         const secret = Deno.env.get("RAZORPAY_KEY_SECRET");
-        if (!secret) {
-            throw new Error("Server Error: RAZORPAY_KEY_SECRET is missing");
-        }
+        if (!secret) throw new Error("Missing server Razorpay secret");
 
         const generatedSignature = await generateHmacSha256(order_id + "|" + payment_id, secret);
 
-        if (generatedSignature !== signature) {
-            console.error("Signature mismatch:", { expected: generatedSignature, received: signature });
-            return new Response(JSON.stringify({ verified: false, error: "Invalid payment signature" }), {
+        if (generatedSignature !== razorpay_signature) {
+            return new Response(JSON.stringify({ verified: false, error: "Invalid signature" }), {
                 headers: { ...corsHeaders, 'Content-Type': 'application/json' },
                 status: 400,
             });
         }
 
-        // 2. Update Database using SERVICE_ROLE_KEY (Bypasses RLS)
-        // We use the Service Role Key because the user might not have permission to UPDATE the `status` field
-        // or RLS policies might restricted. The server is trusted, so we force the update.
-        const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? Deno.env.get('SUPABASE_ANON_KEY') ?? '';
-
+        // 2) Database update
         const supabaseAdmin = createClient(
             Deno.env.get('SUPABASE_URL') ?? '',
-            serviceRoleKey,
-            {
-                auth: {
-                    autoRefreshToken: false,
-                    persistSession: false
-                }
-            }
+            Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
         );
 
         const { data, error } = await supabaseAdmin
             .from('orders')
             .update({
                 status: 'paid',
-                payment_id: payment_id,
+                payment_id,
                 updated_at: new Date().toISOString()
             })
-            .eq('razorpay_order_id', order_id)
+            .eq('razorpay_order_id', order_id)  // IMPORTANT FIX: Using razorpay_order_id to match schema
             .select()
             .single();
 
-        if (error) {
-            console.error("Database mismatch/error:", error);
-            // We return verified: false so frontend knows something went wrong, 
-            // but in reality the payment IS valid. 
-            // Ideally we should alert support here.
-            throw new Error("Payment verified but failed to update order database: " + error.message);
-        }
-
-        console.log("Order updated successfully:", data);
+        if (error) throw new Error("Database error: " + error.message);
 
         return new Response(JSON.stringify({ verified: true, order: data }), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -78,7 +55,6 @@ serve(async (req: Request) => {
         });
 
     } catch (error: any) {
-        console.error("Verification Handler Failed:", error);
         return new Response(JSON.stringify({ verified: false, error: error.message }), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
             status: 400,
@@ -86,7 +62,6 @@ serve(async (req: Request) => {
     }
 });
 
-// Helper for HMAC SHA256 in Deno
 async function generateHmacSha256(message: string, key: string): Promise<string> {
     const encoder = new TextEncoder();
     const keyData = encoder.encode(key);
@@ -101,8 +76,6 @@ async function generateHmacSha256(message: string, key: string): Promise<string>
     );
 
     const signature = await crypto.subtle.sign("HMAC", cryptoKey, messageData);
-
-    // Convert ArrayBuffer to hex string
     return Array.from(new Uint8Array(signature))
         .map(b => b.toString(16).padStart(2, '0'))
         .join('');
