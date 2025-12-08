@@ -6,37 +6,39 @@ const corsHeaders: Record<string, string> = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Headers': '*',
     'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+    'Access-Control-Allow-Credentials': 'true',
+    'Content-Type': 'application/json'
 };
 
 serve(async (req: Request) => {
-    if (req.method === 'OPTIONS') {
-        return new Response('ok', { headers: corsHeaders });
+    if (req.method === "OPTIONS") {
+        return new Response("ok", { headers: corsHeaders });
     }
 
     try {
         const { order_id, razorpay_payment_id, razorpay_signature, user_id } = await req.json();
 
-        console.log("Verifying payment:", { order_id, razorpay_payment_id });
+        console.log("Verifying payment:", { order_id, razorpay_payment_id, razorpay_signature });
 
-        // 1) Verify signature
         const secret = Deno.env.get("RAZORPAY_KEY_SECRET");
-        if (!secret) throw new Error("Missing server Razorpay secret");
+        if (!secret) {
+            throw new Error("Missing server Razorpay secret");
+        }
 
         const generatedSignature = await generateHmacSha256(order_id + "|" + razorpay_payment_id, secret);
 
+        console.log("Signature comparison:", { generatedSignature, razorpay_signature, match: generatedSignature === razorpay_signature });
+
         if (generatedSignature !== razorpay_signature) {
-            console.error("Signature mismatch", { generatedSignature, razorpay_signature });
-            // Return 200 with verified: false to avoid CORS/network errors masking the real issue
-            return new Response(JSON.stringify({ verified: false, error: "Invalid signature" }), {
-                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-                status: 200,
+            return new Response(JSON.stringify({ verified: false, error: "Signature mismatch" }), {
+                headers: corsHeaders,
+                status: 200
             });
         }
 
-        // 2) Database update
         const supabaseAdmin = createClient(
-            Deno.env.get('SUPABASE_URL') ?? '',
-            Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+            Deno.env.get("SUPABASE_URL") ?? "",
+            Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
             {
                 auth: {
                     autoRefreshToken: false,
@@ -46,31 +48,36 @@ serve(async (req: Request) => {
         );
 
         const { data, error } = await supabaseAdmin
-            .from('orders')
+            .from("orders")
             .update({
-                status: 'paid',
+                status: "paid",
                 payment_id: razorpay_payment_id,
                 updated_at: new Date().toISOString()
             })
-            .eq('razorpay_order_id', order_id)
+            .eq("razorpay_order_id", order_id)
             .select()
             .single();
 
         if (error) {
             console.error("DB Error:", error);
-            throw new Error("Database error: " + error.message);
+            return new Response(JSON.stringify({ verified: false, error: "Database error: " + error.message }), {
+                headers: corsHeaders,
+                status: 200
+            });
         }
 
+        console.log("Payment verified successfully:", data);
+
         return new Response(JSON.stringify({ verified: true, order: data }), {
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-            status: 200,
+            headers: corsHeaders,
+            status: 200
         });
 
     } catch (error: any) {
         console.error("Function Error:", error);
         return new Response(JSON.stringify({ verified: false, error: error.message }), {
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-            status: 400,
+            headers: corsHeaders,
+            status: 200
         });
     }
 });

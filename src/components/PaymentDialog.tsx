@@ -91,6 +91,12 @@ const PaymentDialog = ({ open, onOpenChange, projectTitle, amount, projectId }: 
 
           try {
             // Use direct fetch to ensure we hit the correct endpoint
+            console.log("Sending verification request with:", {
+              order_id: response.razorpay_order_id,
+              razorpay_payment_id: response.razorpay_payment_id,
+              user_id: user?.id
+            });
+
             const res = await fetch('https://bgawccnumjzdobsmnvkq.supabase.co/functions/v1/verify-payment', {
               method: 'POST',
               headers: {
@@ -105,10 +111,7 @@ const PaymentDialog = ({ open, onOpenChange, projectTitle, amount, projectId }: 
             });
 
             const data = await res.json();
-
-            if (!res.ok) {
-              throw new Error(data.error || "Payment verification failed on server");
-            }
+            console.log("Verification response:", data);
 
             if (!data.verified) {
               throw new Error(data.error || "Payment not verified");
@@ -122,7 +125,7 @@ const PaymentDialog = ({ open, onOpenChange, projectTitle, amount, projectId }: 
           } catch (err: any) {
             toast.dismiss();
             console.error("Verification failed:", err);
-            toast.error(err.message || "Payment verified failed on server. Please contact support.");
+            toast.error(err.message || "Payment verification failed. Please contact support.");
             setIsProcessing(false);
           }
         },
