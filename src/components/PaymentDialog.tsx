@@ -92,16 +92,18 @@ const PaymentDialog = ({ open, onOpenChange, projectTitle, amount, projectId }: 
           try {
             const { data, error } = await supabase.functions.invoke('verify-payment', {
               body: {
-                razorpay_order_id: response.razorpay_order_id,
-                razorpay_payment_id: response.razorpay_payment_id,
-                razorpay_signature: response.razorpay_signature,
+                order_id: response.razorpay_order_id,
+                payment_id: response.razorpay_payment_id,
+                signature: response.razorpay_signature,
+                user_id: user?.id,
+                project_id: projectId,
               },
             });
 
             toast.dismiss();
 
             if (error) throw error;
-            if (!data?.success) throw new Error(data?.error || "Payment verification failed");
+            if (!data?.verified) throw new Error(data?.error || "Payment verification failed");
 
             toast.success("Payment Verified! Redirecting...");
             // Redirect to download page
