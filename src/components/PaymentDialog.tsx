@@ -90,21 +90,33 @@ const PaymentDialog = ({ open, onOpenChange, projectTitle, amount, projectId }: 
           toast.loading("Verifying payment...");
 
           try {
-            const { data, error } = await supabase.functions.invoke('verify-payment', {
-              body: {
+            // Use direct fetch to ensure we hit the correct endpoint
+            const res = await fetch('https://bgawccnumjzdobsmnvkq.supabase.co/functions/v1/verify-payment', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${session?.access_token}`
+              },
+              body: JSON.stringify({
                 order_id: response.razorpay_order_id,
                 payment_id: response.razorpay_payment_id,
                 razorpay_signature: response.razorpay_signature,
                 user_id: user?.id,
                 project_id: projectId,
-              },
+              })
             });
 
+            const data = await res.json();
+
+            if (!res.ok) {
+              throw new Error(data.error || "Payment verification failed on server");
+            }
+
+            if (!data.verified) {
+              throw new Error(data.error || "Payment not verified");
+            }
+
             toast.dismiss();
-
-            if (error) throw error;
-            if (!data?.verified) throw new Error(data?.error || "Payment verification failed");
-
             toast.success("Payment Verified! Redirecting...");
             // Redirect to download page
             window.location.href = `/download/${projectId}`;
@@ -112,7 +124,7 @@ const PaymentDialog = ({ open, onOpenChange, projectTitle, amount, projectId }: 
           } catch (err: any) {
             toast.dismiss();
             console.error("Verification failed:", err);
-            toast.error("Payment verified failed on server. Please contact support.");
+            toast.error(err.message || "Payment verified failed on server. Please contact support.");
             setIsProcessing(false);
           }
         },
