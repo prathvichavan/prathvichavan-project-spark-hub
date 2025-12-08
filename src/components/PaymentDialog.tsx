@@ -85,14 +85,34 @@ const PaymentDialog = ({ open, onOpenChange, projectTitle, amount, projectId }: 
         // Callback URL for fallback (optional, but good for some flows)
 
 
-        handler: function (response: any) {
-          console.log("Payment success (Frontend), relying on Webhook for verification...", response);
-          toast.success("Payment Successful! Processing...");
+        handler: async function (response: any) {
+          console.log("Payment success (Frontend), verifying with backend...", response);
+          toast.loading("Verifying payment...");
 
-          // Optimistic redirect to download page (or success page)
-          // The Webhook will handle the DB insertion in the background.
-          // We use window.location.href to force a navigation.
-          window.location.href = `/download/${projectId}`;
+          try {
+            const { data, error } = await supabase.functions.invoke('verify-payment', {
+              body: {
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_signature: response.razorpay_signature,
+              },
+            });
+
+            toast.dismiss();
+
+            if (error) throw error;
+            if (!data?.success) throw new Error(data?.error || "Payment verification failed");
+
+            toast.success("Payment Verified! Redirecting...");
+            // Redirect to download page
+            window.location.href = `/download/${projectId}`;
+
+          } catch (err: any) {
+            toast.dismiss();
+            console.error("Verification failed:", err);
+            toast.error("Payment verified failed on server. Please contact support.");
+            setIsProcessing(false);
+          }
         },
         modal: {
           ondismiss: function () {
