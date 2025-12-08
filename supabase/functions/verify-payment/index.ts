@@ -4,7 +4,8 @@ import { crypto } from "https://deno.land/std@0.177.0/crypto/mod.ts";
 
 const corsHeaders: Record<string, string> = {
     'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+    'Access-Control-Allow-Headers': '*',
+    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
 };
 
 serve(async (req: Request) => {
@@ -13,41 +14,52 @@ serve(async (req: Request) => {
     }
 
     try {
-        const { order_id, payment_id, razorpay_signature, user_id } = await req.json();
+        const { order_id, razorpay_payment_id, razorpay_signature, user_id } = await req.json();
 
-        console.log("Verifying payment:", { order_id, payment_id, razorpay_signature });
+        console.log("Verifying payment:", { order_id, razorpay_payment_id });
 
         // 1) Verify signature
         const secret = Deno.env.get("RAZORPAY_KEY_SECRET");
         if (!secret) throw new Error("Missing server Razorpay secret");
 
-        const generatedSignature = await generateHmacSha256(order_id + "|" + payment_id, secret);
+        const generatedSignature = await generateHmacSha256(order_id + "|" + razorpay_payment_id, secret);
 
         if (generatedSignature !== razorpay_signature) {
+            console.error("Signature mismatch", { generatedSignature, razorpay_signature });
+            // Return 200 with verified: false to avoid CORS/network errors masking the real issue
             return new Response(JSON.stringify({ verified: false, error: "Invalid signature" }), {
                 headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-                status: 400,
+                status: 200,
             });
         }
 
         // 2) Database update
         const supabaseAdmin = createClient(
             Deno.env.get('SUPABASE_URL') ?? '',
-            Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+            Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+            {
+                auth: {
+                    autoRefreshToken: false,
+                    persistSession: false
+                }
+            }
         );
 
         const { data, error } = await supabaseAdmin
             .from('orders')
             .update({
                 status: 'paid',
-                payment_id,
+                payment_id: razorpay_payment_id,
                 updated_at: new Date().toISOString()
             })
-            .eq('razorpay_order_id', order_id)  // IMPORTANT FIX: Using razorpay_order_id to match schema
+            .eq('razorpay_order_id', order_id)
             .select()
             .single();
 
-        if (error) throw new Error("Database error: " + error.message);
+        if (error) {
+            console.error("DB Error:", error);
+            throw new Error("Database error: " + error.message);
+        }
 
         return new Response(JSON.stringify({ verified: true, order: data }), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -55,6 +67,7 @@ serve(async (req: Request) => {
         });
 
     } catch (error: any) {
+        console.error("Function Error:", error);
         return new Response(JSON.stringify({ verified: false, error: error.message }), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
             status: 400,

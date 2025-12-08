@@ -94,15 +94,13 @@ const PaymentDialog = ({ open, onOpenChange, projectTitle, amount, projectId }: 
             const res = await fetch('https://bgawccnumjzdobsmnvkq.supabase.co/functions/v1/verify-payment', {
               method: 'POST',
               headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${session?.access_token}`
+                'Content-Type': 'application/json'
               },
               body: JSON.stringify({
                 order_id: response.razorpay_order_id,
-                payment_id: response.razorpay_payment_id,
+                razorpay_payment_id: response.razorpay_payment_id,
                 razorpay_signature: response.razorpay_signature,
                 user_id: user?.id,
-                project_id: projectId,
               })
             });
 
