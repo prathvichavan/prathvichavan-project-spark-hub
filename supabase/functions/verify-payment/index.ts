@@ -15,7 +15,7 @@ serve(async (req: Request) => {
     try {
         const { order_id, payment_id, razorpay_signature, user_id } = await req.json();
 
-        console.log("Verifying payment:", { order_id, payment_id });
+        console.log("Verifying payment:", { order_id, payment_id, razorpay_signature });
 
         // 1) Verify signature
         const secret = Deno.env.get("RAZORPAY_KEY_SECRET");
