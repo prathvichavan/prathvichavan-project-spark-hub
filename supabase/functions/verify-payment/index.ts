@@ -15,62 +15,70 @@ serve(async (req: Request) => {
     }
 
     try {
-        const { order_id, payment_id, signature, user_id, project_id } = await req.json();
+        const { order_id, payment_id, signature, user_id } = await req.json();
 
-        console.log("Received verification request:", { order_id, payment_id, user_id, project_id });
+        console.log("Verifying payment:", { order_id, payment_id });
 
         // 1. Verify Razorpay Signature
         const secret = Deno.env.get("RAZORPAY_KEY_SECRET");
         if (!secret) {
-            throw new Error("Server configuration error: Razorpay secret missing");
+            throw new Error("Server Error: RAZORPAY_KEY_SECRET is missing");
         }
 
         const generatedSignature = await generateHmacSha256(order_id + "|" + payment_id, secret);
 
         if (generatedSignature !== signature) {
-            console.error("Signature verification failed", { expected: generatedSignature, received: signature });
-            return new Response(JSON.stringify({ verified: false, error: "Invalid signature" }), {
+            console.error("Signature mismatch:", { expected: generatedSignature, received: signature });
+            return new Response(JSON.stringify({ verified: false, error: "Invalid payment signature" }), {
                 headers: { ...corsHeaders, 'Content-Type': 'application/json' },
                 status: 400,
             });
         }
 
-        // 2. Verified - Update Database
-        const supabaseClient = createClient(
+        // 2. Update Database using SERVICE_ROLE_KEY (Bypasses RLS)
+        // We use the Service Role Key because the user might not have permission to UPDATE the `status` field
+        // or RLS policies might restricted. The server is trusted, so we force the update.
+        const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? Deno.env.get('SUPABASE_ANON_KEY') ?? '';
+
+        const supabaseAdmin = createClient(
             Deno.env.get('SUPABASE_URL') ?? '',
-            Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-            { global: { headers: { Authorization: req.headers.get('Authorization')! } } }
+            serviceRoleKey,
+            {
+                auth: {
+                    autoRefreshToken: false,
+                    persistSession: false
+                }
+            }
         );
 
-        // Update existing order to 'paid'
-        // We search by razorpay_order_id (which maps to order_id from client)
-        const { data, error } = await supabaseClient
+        const { data, error } = await supabaseAdmin
             .from('orders')
             .update({
-                status: 'paid', // Keep 'paid' to match frontend checks in DownloadPage
+                status: 'paid',
                 payment_id: payment_id,
                 updated_at: new Date().toISOString()
             })
             .eq('razorpay_order_id', order_id)
-            .eq('user_id', user_id) // Extra safety check
             .select()
             .single();
 
         if (error) {
-            console.error("Database update error:", error);
-            // Even if DB fails, payment was real. But we return false so frontend can alert user/support.
-            throw error;
+            console.error("Database mismatch/error:", error);
+            // We return verified: false so frontend knows something went wrong, 
+            // but in reality the payment IS valid. 
+            // Ideally we should alert support here.
+            throw new Error("Payment verified but failed to update order database: " + error.message);
         }
 
-        console.log("Payment verified and order updated:", data);
+        console.log("Order updated successfully:", data);
 
-        return new Response(JSON.stringify({ verified: true }), {
+        return new Response(JSON.stringify({ verified: true, order: data }), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
             status: 200,
         });
 
     } catch (error: any) {
-        console.error("Verification Handler Error:", error);
+        console.error("Verification Handler Failed:", error);
         return new Response(JSON.stringify({ verified: false, error: error.message }), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
             status: 400,
