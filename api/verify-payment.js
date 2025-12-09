@@ -32,11 +32,16 @@ export default async function handler(req, res) {
         }
 
         // 2. Update Database (Supabase)
-        // We need SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY env vars in Vercel
-        const supabase = createClient(
-            process.env.SUPABASE_URL,
-            process.env.SUPABASE_SERVICE_ROLE_KEY
-        );
+        // 2. Update Database (Supabase)
+        const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
+        const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+        if (!supabaseUrl || !supabaseKey) {
+            console.error("Missing Supabase Config:", { hasUrl: !!supabaseUrl, hasKey: !!supabaseKey });
+            throw new Error("Missing Supabase Credentials (URL or Service Role Key)");
+        }
+
+        const supabase = createClient(supabaseUrl, supabaseKey);
 
         // Update order
         const { data: orderData, error: orderError } = await supabase
