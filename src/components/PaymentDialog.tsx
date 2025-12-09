@@ -85,50 +85,14 @@ const PaymentDialog = ({ open, onOpenChange, projectTitle, amount, projectId }: 
         // Callback URL for fallback (optional, but good for some flows)
 
 
-        handler: async function (response: any) {
-          console.log("Payment success (Frontend), verifying with backend...", response);
-          toast.loading("Verifying payment...");
+        handler: function (response: any) {
+          console.log("Payment success (Frontend), relying on Webhook for verification...", response);
+          toast.success("Payment Successful! Processing...");
 
-          try {
-            // Use direct fetch to ensure we hit the correct endpoint
-            console.log("Sending verification request with:", {
-              order_id: response.razorpay_order_id,
-              razorpay_payment_id: response.razorpay_payment_id,
-              user_id: user?.id
-            });
-
-            const res = await fetch("https://bgawccnumjzdobsmnvkq.supabase.co/functions/v1/verify-payment", {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                "Accept": "application/json"
-              },
-              body: JSON.stringify({
-                razorpay_order_id: response.razorpay_order_id,
-                razorpay_payment_id: response.razorpay_payment_id,
-                razorpay_signature: response.razorpay_signature,
-                user_id: user?.id
-              })
-            });
-
-            const data = await res.json();
-            console.log("Verification response:", data);
-
-            if (!data.verified && data.status !== 'success') {
-              throw new Error(data.error || "Payment not verified");
-            }
-
-            toast.dismiss();
-            toast.success("Payment Verified! Redirecting...");
-            // Redirect to download page
-            window.location.href = `/download/${projectId}`;
-
-          } catch (err: any) {
-            toast.dismiss();
-            console.error("Verification failed:", err);
-            toast.error(err.message || "Payment verification failed. Please contact support.");
-            setIsProcessing(false);
-          }
+          // Optimistic redirect to download page (or success page)
+          // The Webhook will handle the DB insertion in the background.
+          // We use window.location.href to force a navigation.
+          window.location.href = `/download/${projectId}`;
         },
         modal: {
           ondismiss: function () {
