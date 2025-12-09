@@ -9,7 +9,7 @@ export default async function handler(req, res) {
     try {
         const { orderId, paymentId, signature, userEmail, projectId } = req.body;
 
-        const secret = process.env.RAZORPAY_SECRET_KEY;
+        const secret = process.env.RAZORPAY_SECRET_KEY || process.env.RAZORPAY_KEY_SECRET;
         if (!secret) {
             return res.status(500).json({ error: "Missing Razorpay Secret" });
         }
