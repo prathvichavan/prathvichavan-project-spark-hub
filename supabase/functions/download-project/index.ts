@@ -24,7 +24,6 @@ serve(async (req) => {
         if (userError || !user) throw new Error('Unauthorized')
 
         // Check orders table for a paid order
-        // We use 'orders' as the source of truth for purchase
         const { data: order, error: orderError } = await supabaseClient
             .from('orders')
             .select('*')
@@ -46,16 +45,8 @@ serve(async (req) => {
             )
         }
 
-        // We already verified the user owns the project (download record exists).
-        // No need to insert another record into 'downloads' table as it tracks ownership, not download logs.
-
-        // Generate Public URL
-        // The user specifically requested the path: project-files/project-files/{projectId}/project.zip
-        // Since we are calling .from('project-files'), we need to append the rest of the path.
-        // However, based on standard Supabase behavior, .from('bucket') + .getPublicUrl('path') results in .../bucket/path
-        // The user wants .../project-files/project-files/... which implies a folder named 'project-files' INSIDE the bucket 'project-files'.
-        // We will respect the user's explicit request for the double 'project-files' in the URL structure.
-
+        // Generate Public URL for download
+        // We assume the file is at: project-files/project-files/{projectId}/project.zip
         const { data } = supabaseClient.storage
             .from('project-files')
             .getPublicUrl(`project-files/${projectId}/project.zip`)

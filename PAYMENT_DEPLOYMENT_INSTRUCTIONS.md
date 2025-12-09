@@ -1,71 +1,37 @@
-# Payment System Rebuild Instructions
+# Payment System Rebuild Details
 
-This guide details the new payment flow implementation and deployment steps.
+I have completely replaced the Supabase Edge Functions with Vercel Serverless Functions (Node.js) for reliability and better compatibility with the `razorpay` NPM package.
 
-## 1. Clean Up
-The following legacy files have been removed/replaced:
-- `src/utils/razorpay.ts` (Deleted)
-- `supabase/functions/verify-user-payment` (Deleted/Replaced)
-- `src/components/PaymentDialog.tsx` (Rewritten)
-- `supabase/functions/create-order` (Rewritten)
-- `supabase/functions/verify-payment` (Rewritten)
+## 1. New API Endpoints (Vercel)
+The following files are now located in the `/api` directory and will be deployed as serverless functions by Vercel:
 
-## 2. Database Schema Update
-You must update your Supabase database schema to support the new flow.
-Run the content of `new_razorpay_schema.sql` in your Supabase SQL Editor.
+- `/api/create-order.js`: Creates Razorpay order.
+- `/api/verify-payment.js`: Verifies signature and updates Supabase DB.
 
-## 3. Environment Variables
-You need to set the following secrets in your Supabase Project (Settings > Edge Functions > Secrets).
+## 2. Deleted Files
+- `supabase/functions/create-order` (Removed)
+- `supabase/functions/verify-payment` (Removed)
 
-| Name | Value |
-|------|-------|
+## 3. Frontend Updates
+- `PaymentDialog.tsx` now calls `/api/create-order` and `/api/verify-payment` instead of `supabase.functions.invoke()`.
+
+## 4. Environment Variables Checklist (Vercel)
+You must ensure these environment variables are set in your **Vercel Project Settings**:
+
+| Variable | Value |
+|---|---|
 | `RAZORPAY_KEY_ID` | `rzp_live_RpXlTM8rqD5GH4` |
 | `RAZORPAY_SECRET_KEY` | `O8VqN4yBLKdTkqC2BqGJOqqY` |
 | `SUPABASE_URL` | (Your Supabase URL) |
 | `SUPABASE_SERVICE_ROLE_KEY` | (Your Supabase Service Role Key) |
 
-To set these via CLI:
-```bash
-npx supabase secrets set RAZORPAY_KEY_ID=rzp_live_RpXlTM8rqD5GH4
-npx supabase secrets set RAZORPAY_SECRET_KEY=O8VqN4yBLKdTkqC2BqGJOqqY
-```
+**Note**: Do not expose `RAZORPAY_SECRET_KEY` or `SUPABASE_SERVICE_ROLE_KEY` to the public (do not set `NEXT_PUBLIC_` prefix).
 
-## 4. Deployment Steps
+## 5. Deployment
+Simply push your code to GitHub/Vercel:
 
-### Deploy Edge Functions
-Run the following command to deploy the new functions:
-
-```bash
-npx supabase functions deploy create-order --no-verify-jwt
-npx supabase functions deploy verify-payment --no-verify-jwt
-```
-*Note: `--no-verify-jwt` is optional but ensures `create-order` can be called if you manage public access, although our client sends auth headers. If you enforce JWT, ensure your client is logged in.*
-
-### Deploy Frontend
-Push your changes to your Vercel repository.
 ```bash
 git add .
-git commit -m "Rebuild Razorpay Payment Flow"
+git commit -m "Migrate payment functions to Vercel API"
 git push
-```
-
-## 5. Testing
-1. Login to the app.
-2. Select a project and click "Pay Now" (or Buy).
-3. The Razorpay popup should appear.
-4. Complete payment (using a Live card or Test mode if you switch keys).
-5. Watch for the success toast.
-6. You should be automatically redirected to `/download/{projectId}`.
-
-## 6. Folder Structure (New)
-```
-/src
-  /components
-    PaymentDialog.tsx  (Frontend Logic)
-/supabase
-  /functions
-    /create-order
-      index.ts         (Backend Order Creation)
-    /verify-payment
-      index.ts         (Backend Verification)
 ```

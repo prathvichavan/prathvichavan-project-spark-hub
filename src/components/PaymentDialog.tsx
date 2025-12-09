@@ -50,23 +50,24 @@ const PaymentDialog = ({ open, onOpenChange, projectTitle, amount, projectId }: 
         throw new Error("Razorpay SDK failed to load");
       }
 
-      // 1. Create Order
-      const { data: orderData, error: orderError } = await supabase.functions.invoke('create-order', {
-        body: {
-          amount,
-          projectId,
-          userId: user.id
-        }
+      // 1. Create Order (Vercel API)
+      const response = await fetch('/api/create-order', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          // Pass auth token if needed, but not required for simple open endpoint
+          // 'Authorization': `Bearer ${session?.access_token}` 
+        },
+        body: JSON.stringify({ amount, projectId, userId: user.id })
       });
 
-      if (orderError) {
-        console.error("Order Creation Error:", orderError);
-        throw new Error("Failed to create order. Please try again.");
+      const orderData = await response.json();
+
+      if (!response.ok) {
+        console.error("Order Creation Logic Error:", orderData);
+        throw new Error(orderData.error || "Failed to create order. Please check network/console.");
       }
 
-      if (orderData.error) {
-        throw new Error(orderData.error);
-      }
 
       // 2. Open Razorpay
       const options = {
@@ -90,25 +91,28 @@ const PaymentDialog = ({ open, onOpenChange, projectTitle, amount, projectId }: 
           toast.success("Payment Successful! Verifying...");
 
           try {
-            // 3. Verify Payment
-            const { data: verifyData, error: verifyError } = await supabase.functions.invoke('verify-payment', {
-              body: {
+            // 3. Verify Payment (Vercel API)
+            const verifyResponse = await fetch('/api/verify-payment', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
                 orderId: response.razorpay_order_id,
                 paymentId: response.razorpay_payment_id,
                 signature: response.razorpay_signature,
-                userEmail: user?.email
-              }
+                userEmail: user?.email,
+                projectId
+              })
             });
 
-            if (verifyError || verifyData?.error) {
-              console.error("Verification failed:", verifyError || verifyData?.error);
+            const verifyData = await verifyResponse.json();
+
+            if (!verifyResponse.ok || verifyData.error) {
+              console.error("Verification failed:", verifyData.error);
               toast.error("Payment successful but verification failed. Contact support.");
-              // We might still redirect if we think it's just a network glitch on response, 
-              // but strictly we should stop. 
-              // However, user said "Provides download page access ONLY IF payment verified".
-              // So if verification fails, we do NOT redirect.
+              // Do not redirect
               return;
             }
+
 
             console.log("Verification Success:", verifyData);
             toast.success("Verification Successful! Redirecting...");
