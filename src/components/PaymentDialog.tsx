@@ -86,15 +86,39 @@ const PaymentDialog = ({ open, onOpenChange, projectTitle, amount, projectId }: 
 
 
         handler: async function (response: any) {
-          console.log("Payment success (Frontend), relying on Webhook for verification...", response);
+          console.log("Payment success (Frontend). Verifying signature...", response);
           toast.success("Payment Successful! Verifying...");
 
-          // Give webhook a moment to process (2 seconds)
-          // This helps ensure the order status is updated before we check on the download page
-          await new Promise(resolve => setTimeout(resolve, 2000));
+          try {
+            // Call our new immediate verification function
+            const { data: verifyData, error: verifyError } = await supabase.functions.invoke('verify-user-payment', {
+              body: {
+                orderId: response.razorpay_order_id,
+                paymentId: response.razorpay_payment_id,
+                signature: response.razorpay_signature
+              }
+            });
 
-          // Redirect to download page
-          window.location.href = `/download/${projectId}`;
+            if (verifyError) {
+              console.error("Verification Function Error:", verifyError);
+              // Fallback to webhook wait if direct verification fails (unlikely)
+              toast.error("Verification failed, checking server...");
+              await new Promise(resolve => setTimeout(resolve, 3000));
+            } else if (verifyData.error) {
+              console.error("Verification Logic Error:", verifyData.error);
+              throw new Error(verifyData.error);
+            } else {
+              console.log("Immediate verification successful!", verifyData);
+            }
+
+            // Redirect to download page
+            window.location.href = `/download/${projectId}`;
+          } catch (err) {
+            console.error("Handler error:", err);
+            toast.error("Payment verified but processing failed. Please contact support if not resolved.");
+            // Still redirect as webhook might have worked
+            window.location.href = `/download/${projectId}`;
+          }
         },
         modal: {
           ondismiss: function () {
