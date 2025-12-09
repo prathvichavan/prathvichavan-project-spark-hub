@@ -21,6 +21,13 @@ export default async function handler(req, res) {
             .digest("hex");
 
         if (generated_signature !== signature) {
+            console.error("Signature Mismatch Details:", {
+                received_sig: signature,
+                generated_sig: generated_signature,
+                order_id: orderId,
+                payment_id: paymentId,
+                secret_last4: secret.slice(-4)
+            });
             return res.status(400).json({ error: "Invalid signature" });
         }
 
