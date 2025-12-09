@@ -7,20 +7,18 @@ const corsHeaders = {
 }
 
 serve(async (req) => {
+    // Handle CORS preflight requests
     if (req.method === 'OPTIONS') {
-        return new Response('ok', { headers: corsHeaders })
+        return new Response('ok', { headers: new Headers(corsHeaders) })
     }
 
     try {
         const { orderId, paymentId, signature } = await req.json()
 
-        // Server-side signature verification
+        // 1. Verify Signature locally
         const secret = Deno.env.get('RAZORPAY_KEY_SECRET') ?? ''
-
-        // Generate signature locally
         const text = `${orderId}|${paymentId}`;
 
-        // HMAC SHA256 using Web Crypto API
         const encoder = new TextEncoder();
         const keyData = encoder.encode(secret);
         const message = encoder.encode(text);
@@ -44,14 +42,14 @@ serve(async (req) => {
             throw new Error("Invalid signature")
         }
 
-        const supabaseClient = createClient(
+        // 2. Update DB (Service Role to update secure tables)
+        const supabaseAdmin = createClient(
             Deno.env.get('SUPABASE_URL') ?? '',
-            Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
-            { global: { headers: { Authorization: req.headers.get('Authorization')! } } }
+            Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
         )
 
         // Update order status to paid
-        const { error: updateError } = await supabaseClient
+        const { error: updateError } = await supabaseAdmin
             .from('orders')
             .update({ status: 'paid' })
             .eq('razorpay_order_id', orderId)
@@ -59,14 +57,14 @@ serve(async (req) => {
         if (updateError) throw updateError
 
         // Fetch order details to log payment
-        const { data: orderData } = await supabaseClient
+        const { data: orderData } = await supabaseAdmin
             .from('orders')
             .select('id, user_id, amount, project_id')
             .eq('razorpay_order_id', orderId)
             .single()
 
         if (orderData) {
-            const { error: paymentError } = await supabaseClient.from('payments').insert({
+            const { error: paymentError } = await supabaseAdmin.from('payments').insert({
                 order_id: orderData.id,
                 razorpay_payment_id: paymentId,
                 razorpay_order_id: orderId,
@@ -78,16 +76,30 @@ serve(async (req) => {
             if (paymentError) console.error("Payment log cancel", paymentError)
         }
 
+        // 3. Return Success
+        const responseHeaders = new Headers(corsHeaders)
+        responseHeaders.set('Content-Type', 'application/json')
+
         return new Response(
             JSON.stringify({ success: true, projectId: orderData?.project_id }),
-            { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            {
+                status: 200,
+                headers: responseHeaders
+            }
         )
 
     } catch (error) {
         console.error("Verification Error:", error)
+
+        const errorHeaders = new Headers(corsHeaders)
+        errorHeaders.set('Content-Type', 'application/json')
+
         return new Response(
             JSON.stringify({ error: error.message }),
-            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            {
+                status: 500,
+                headers: errorHeaders
+            }
         )
     }
 })

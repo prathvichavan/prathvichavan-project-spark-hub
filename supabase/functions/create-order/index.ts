@@ -1,5 +1,4 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
-import Razorpay from "https://esm.sh/razorpay@2.9.2"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
 
 const corsHeaders = {
@@ -8,13 +7,15 @@ const corsHeaders = {
 }
 
 serve(async (req) => {
+    // Handle CORS preflight requests
     if (req.method === 'OPTIONS') {
-        return new Response('ok', { headers: corsHeaders })
+        return new Response('ok', { headers: new Headers(corsHeaders) })
     }
 
     try {
         const { amount, projectId } = await req.json()
 
+        // 1. Authenticate User
         const supabaseClient = createClient(
             Deno.env.get('SUPABASE_URL') ?? '',
             Deno.env.get('SUPABASE_ANON_KEY') ?? '',
@@ -26,19 +27,13 @@ serve(async (req) => {
             throw new Error("User not authenticated")
         }
 
-        // Create Admin Client for DB operations to bypass RLS
-        const supabaseAdmin = createClient(
-            Deno.env.get('SUPABASE_URL') ?? '',
-            Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-        )
+        // 2. Create Order via Razorpay API (using fetch)
+        const keyId = Deno.env.get('RAZORPAY_KEY_ID') ?? ''
+        const keySecret = Deno.env.get('RAZORPAY_KEY_SECRET') ?? ''
+        const auth = btoa(`${keyId}:${keySecret}`)
 
-        const razorpay = new Razorpay({
-            key_id: Deno.env.get('RAZORPAY_KEY_ID') ?? '',
-            key_secret: Deno.env.get('RAZORPAY_KEY_SECRET') ?? '',
-        })
-
-        const options = {
-            amount: Math.round(amount * 100), // Razorpay amount is in paise
+        const razorpayBody = {
+            amount: Math.round(amount * 100), // in paise
             currency: "INR",
             receipt: `receipt_${Date.now()}_${user.id.slice(0, 5)}`,
             notes: {
@@ -47,10 +42,30 @@ serve(async (req) => {
             }
         }
 
-        const order = await razorpay.orders.create(options)
+        const rzpResponse = await fetch('https://api.razorpay.com/v1/orders', {
+            method: 'POST',
+            headers: new Headers({
+                'Authorization': `Basic ${auth}`,
+                'Content-Type': 'application/json'
+            }),
+            body: JSON.stringify(razorpayBody)
+        })
+
+        const order = await rzpResponse.json()
+
+        if (!rzpResponse.ok) {
+            console.error("Razorpay API Error:", order)
+            throw new Error(order.error?.description || "Failed to create Razorpay order")
+        }
+
         console.log("Razorpay Order Created:", order)
 
-        // Insert into orders table using Admin Client
+        // 3. Insert into DB (using Service Role to bypass RLS)
+        const supabaseAdmin = createClient(
+            Deno.env.get('SUPABASE_URL') ?? '',
+            Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+        )
+
         const { error: insertError } = await supabaseAdmin
             .from('orders')
             .insert({
@@ -67,20 +82,35 @@ serve(async (req) => {
             throw new Error("Failed to create local order record: " + insertError.message)
         }
 
+        // 4. Return Success Response
+        const responseHeaders = new Headers(corsHeaders)
+        responseHeaders.set('Content-Type', 'application/json')
+
         return new Response(
             JSON.stringify({
                 orderId: order.id,
                 amount: order.amount,
                 currency: order.currency,
-                key: Deno.env.get('RAZORPAY_KEY_ID')
+                key: keyId
             }),
-            { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            {
+                status: 200,
+                headers: responseHeaders
+            }
         )
+
     } catch (error) {
         console.error("Create Order Error:", error)
+
+        const errorHeaders = new Headers(corsHeaders)
+        errorHeaders.set('Content-Type', 'application/json')
+
         return new Response(
             JSON.stringify({ error: error.message }),
-            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            {
+                status: 500, // Returning 500 on failure as requested (or 400 if client error, but user said 200 or 500)
+                headers: errorHeaders
+            }
         )
     }
 })
