@@ -26,6 +26,12 @@ serve(async (req) => {
             throw new Error("User not authenticated")
         }
 
+        // Create Admin Client for DB operations to bypass RLS
+        const supabaseAdmin = createClient(
+            Deno.env.get('SUPABASE_URL') ?? '',
+            Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+        )
+
         const razorpay = new Razorpay({
             key_id: Deno.env.get('RAZORPAY_KEY_ID') ?? '',
             key_secret: Deno.env.get('RAZORPAY_KEY_SECRET') ?? '',
@@ -44,8 +50,8 @@ serve(async (req) => {
         const order = await razorpay.orders.create(options)
         console.log("Razorpay Order Created:", order)
 
-        // Insert into orders table
-        const { error: insertError } = await supabaseClient
+        // Insert into orders table using Admin Client
+        const { error: insertError } = await supabaseAdmin
             .from('orders')
             .insert({
                 user_id: user.id,
@@ -58,7 +64,7 @@ serve(async (req) => {
 
         if (insertError) {
             console.error("Supabase Insert Error:", insertError)
-            throw new Error("Failed to create local order record")
+            throw new Error("Failed to create local order record: " + insertError.message)
         }
 
         return new Response(
