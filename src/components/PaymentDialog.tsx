@@ -37,6 +37,11 @@ const PaymentDialog = ({ open, onOpenChange, projectTitle, amount, projectId }: 
       return;
     }
 
+    if (!user) {
+      toast.error("You must be logged in to purchase");
+      return;
+    }
+
     setIsProcessing(true);
 
     try {
@@ -47,32 +52,30 @@ const PaymentDialog = ({ open, onOpenChange, projectTitle, amount, projectId }: 
 
       // 1. Create Order
       const { data: orderData, error: orderError } = await supabase.functions.invoke('create-order', {
-        body: { amount, projectId }
+        body: {
+          amount,
+          projectId,
+          userId: user.id
+        }
       });
 
       if (orderError) {
-        console.error("Order Creation Error (Invoke Failed):", orderError);
-        throw new Error("Failed to connect to payment server.");
+        console.error("Order Creation Error:", orderError);
+        throw new Error("Failed to create order. Please try again.");
       }
 
-      // Check for error returned in the body (status 200 but logic error)
-      if (orderData && orderData.error) {
-        console.error("Order Creation Logic Error:", orderData.error);
+      if (orderData.error) {
         throw new Error(orderData.error);
-      }
-
-      if (!orderData || !orderData.orderId) {
-        throw new Error("Invalid order data received from server");
       }
 
       // 2. Open Razorpay
       const options = {
-        key: orderData.key, // Key from server
-        amount: orderData.amount.toString(),
+        key: orderData.key,
+        amount: orderData.amount,
         currency: orderData.currency,
         name: "TechProjectHub",
         description: `Purchase: ${projectTitle}`,
-        image: "https://techprojecthub.tech/images/blog/logo.png", // Updated to new domain
+        image: "https://techprojecthub.tech/images/blog/logo.png",
         order_id: orderData.orderId,
         prefill: {
           name: user?.user_metadata?.full_name || user?.email,
@@ -82,42 +85,44 @@ const PaymentDialog = ({ open, onOpenChange, projectTitle, amount, projectId }: 
         theme: {
           color: "#4f46e5",
         },
-        // Callback URL for fallback (optional, but good for some flows)
-
-
         handler: async function (response: any) {
-          console.log("Payment success (Frontend). Verifying signature...", response);
+          console.log("Payment success. Verifying...", response);
           toast.success("Payment Successful! Verifying...");
 
           try {
-            // Call our new immediate verification function
-            const { data: verifyData, error: verifyError } = await supabase.functions.invoke('verify-user-payment', {
+            // 3. Verify Payment
+            const { data: verifyData, error: verifyError } = await supabase.functions.invoke('verify-payment', {
               body: {
                 orderId: response.razorpay_order_id,
                 paymentId: response.razorpay_payment_id,
-                signature: response.razorpay_signature
+                signature: response.razorpay_signature,
+                userEmail: user?.email
               }
             });
 
-            if (verifyError) {
-              console.error("Verification Function Error:", verifyError);
-              // Fallback to webhook wait if direct verification fails (unlikely)
-              toast.error("Verification failed, checking server...");
-              await new Promise(resolve => setTimeout(resolve, 3000));
-            } else if (verifyData.error) {
-              console.error("Verification Logic Error:", verifyData.error);
-              throw new Error(verifyData.error);
-            } else {
-              console.log("Immediate verification successful!", verifyData);
+            if (verifyError || verifyData?.error) {
+              console.error("Verification failed:", verifyError || verifyData?.error);
+              toast.error("Payment successful but verification failed. Contact support.");
+              // We might still redirect if we think it's just a network glitch on response, 
+              // but strictly we should stop. 
+              // However, user said "Provides download page access ONLY IF payment verified".
+              // So if verification fails, we do NOT redirect.
+              return;
             }
 
-            // Redirect to download page
-            window.location.href = `/download/${projectId}`;
-          } catch (err) {
-            console.error("Handler error:", err);
-            toast.error("Payment verified but processing failed. Please contact support if not resolved.");
-            // Still redirect as webhook might have worked
-            window.location.href = `/download/${projectId}`;
+            console.log("Verification Success:", verifyData);
+            toast.success("Verification Successful! Redirecting...");
+
+            // 4. Redirect
+            if (verifyData.redirectUrl) {
+              window.location.href = verifyData.redirectUrl;
+            } else {
+              window.location.href = `/download/${projectId}`;
+            }
+
+          } catch (verifyErr) {
+            console.error("Verification Logic Error:", verifyErr);
+            toast.error("Verification failed.");
           }
         },
         modal: {
@@ -128,12 +133,12 @@ const PaymentDialog = ({ open, onOpenChange, projectTitle, amount, projectId }: 
         }
       };
 
-      const paymentObject = new window.Razorpay(options);
+      const paymentObject = new (window as any).Razorpay(options);
       paymentObject.open();
 
     } catch (error: any) {
-      console.error("Payment Error:", error);
-      toast.error(error.message || "Something went wrong");
+      console.error("Payment Flow Error:", error);
+      toast.error(error.message || "Something went wrong initiating payment");
       setIsProcessing(false);
     }
   };
