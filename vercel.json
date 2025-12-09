@@ -1,10 +1,6 @@
 {
     "rewrites": [
         {
-            "source": "/api/verifyPayment",
-            "destination": "https://bgawccnumjzdobswnvkq.supabase.co/functions/v1/verify-payment"
-        },
-        {
             "source": "/((?!api/.*|sitemap.xml|robots.txt|images/.*|assets/.*|favicon.ico|logo.png).*)",
             "destination": "/index.html"
         }
