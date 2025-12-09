@@ -1,4 +1,3 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
 
 const corsHeaders = {
@@ -6,7 +5,7 @@ const corsHeaders = {
     'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-serve(async (req) => {
+Deno.serve(async (req) => {
     // Handle CORS preflight requests
     if (req.method === 'OPTIONS') {
         return new Response('ok', { headers: new Headers(corsHeaders) })
@@ -30,6 +29,10 @@ serve(async (req) => {
         // 2. Create Order via Razorpay API (using fetch)
         const keyId = Deno.env.get('RAZORPAY_KEY_ID') ?? ''
         const keySecret = Deno.env.get('RAZORPAY_KEY_SECRET') ?? ''
+
+        console.log("Razorpay Key ID:", keyId ? `${keyId.substring(0, 10)}...` : 'MISSING')
+        console.log("Razorpay Secret:", keySecret ? 'SET' : 'MISSING')
+
         const auth = btoa(`${keyId}:${keySecret}`)
 
         const razorpayBody = {
@@ -42,6 +45,8 @@ serve(async (req) => {
             }
         }
 
+        console.log("Calling Razorpay API with body:", JSON.stringify(razorpayBody))
+
         const rzpResponse = await fetch('https://api.razorpay.com/v1/orders', {
             method: 'POST',
             headers: new Headers({
@@ -51,14 +56,18 @@ serve(async (req) => {
             body: JSON.stringify(razorpayBody)
         })
 
+        console.log("Razorpay Response Status:", rzpResponse.status)
+
         const order = await rzpResponse.json()
 
+        console.log("Razorpay Response Body:", JSON.stringify(order))
+
         if (!rzpResponse.ok) {
-            console.error("Razorpay API Error:", order)
-            throw new Error(order.error?.description || "Failed to create Razorpay order")
+            console.error("Razorpay API Error - Full Response:", JSON.stringify(order))
+            throw new Error(order.error?.description || JSON.stringify(order) || "Failed to create Razorpay order")
         }
 
-        console.log("Razorpay Order Created:", order)
+        console.log("Razorpay Order Created Successfully:", order.id)
 
         // 3. Insert into DB (using Service Role to bypass RLS)
         const supabaseAdmin = createClient(
