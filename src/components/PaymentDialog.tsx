@@ -50,24 +50,15 @@ const PaymentDialog = ({ open, onOpenChange, projectTitle, amount, projectId }: 
         throw new Error("Razorpay SDK failed to load");
       }
 
-      // 1. Create Order (Vercel API)
-      const response = await fetch('/api/create-order', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          // Pass auth token if needed, but not required for simple open endpoint
-          // 'Authorization': `Bearer ${session?.access_token}` 
-        },
-        body: JSON.stringify({ amount, projectId, userId: user.id })
+      // 1. Create Order (Supabase Edge Function)
+      const { data: orderData, error: orderError } = await supabase.functions.invoke('create-order', {
+        body: { amount, projectId }
       });
 
-      const orderData = await response.json();
-
-      if (!response.ok) {
-        console.error("Order Creation Logic Error:", orderData);
-        throw new Error(orderData.error || "Failed to create order. Please check network/console.");
+      if (orderError) {
+        console.error("Order Creation Logic Error:", orderError);
+        throw new Error(orderData?.error || orderError.message || "Failed to create order.");
       }
-
 
       // 2. Open Razorpay
       const options = {
@@ -91,38 +82,40 @@ const PaymentDialog = ({ open, onOpenChange, projectTitle, amount, projectId }: 
           toast.success("Payment Successful! Verifying...");
 
           try {
-            // 3. Verify Payment (Vercel API)
-            const verifyResponse = await fetch('/api/verify-payment', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
+            // 3. Verify Payment (Supabase Edge Function)
+            const { data: verifyData, error: verifyError } = await supabase.functions.invoke('verify-payment', {
+              body: {
                 orderId: response.razorpay_order_id,
                 paymentId: response.razorpay_payment_id,
                 signature: response.razorpay_signature,
-                userEmail: user?.email,
-                projectId
-              })
+              }
             });
 
-            const verifyData = await verifyResponse.json();
-
-            if (!verifyResponse.ok || verifyData.error) {
-              console.error("Verification failed:", verifyData.error);
+            if (verifyError || verifyData?.error) {
+              console.error("Verification failed:", verifyError || verifyData?.error);
               toast.error("Payment successful but verification failed. Contact support.");
-              // Do not redirect
               return;
             }
-
 
             console.log("Verification Success:", verifyData);
             toast.success("Verification Successful! Redirecting...");
 
             // 4. Redirect
-            if (verifyData.redirectUrl) {
-              window.location.href = verifyData.redirectUrl;
-            } else {
-              window.location.href = `/download/${projectId}`;
-            }
+            // Since we save to profile, we can redirect to Dashboard or Download page.
+            // Requirement: "after sucessful payment user can download thir project"
+            // Let's redirect to dashboard or the project page where the button changes to 'Download'
+            // For now, let's keep the user on the page or redirect to /dashboard
+
+            // Checking previous behavior: window.location.href = verifyData.redirectUrl || `/download/${projectId}`;
+
+            // Let's just redirect to dashboard as per "save in user profile" hint, or download page.
+            // The user said: "after sucessful payment user can download thir project"
+            // Maybe redirecting to a download page is better if it exists. 
+            // Previous code had `/download/${projectId}`, let's stick to that if it exists, or Dashboard.
+
+            setTimeout(() => {
+              window.location.href = `/dashboard`;
+            }, 1000);
 
           } catch (verifyErr) {
             console.error("Verification Logic Error:", verifyErr);
