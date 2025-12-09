@@ -21,18 +21,32 @@ const DownloadPage = () => {
             if (!user || !id) return;
 
             try {
-                // 1. Check for paid order
-                const { data: orders, error: orderError } = await supabase
-                    .from("orders")
-                    .select("*")
-                    .eq("project_id", id)
-                    .eq("user_id", user.id)
-                    .eq("status", "paid") // Ensure we check for 'paid' status
-                    .limit(1);
+                // Retry logic: Check up to 5 times with 1 second delay
+                let order = null;
+                let attempts = 0;
+                const maxAttempts = 5;
 
-                if (orderError) throw orderError;
+                while (attempts < maxAttempts && !order) {
+                    // 1. Check for paid order
+                    const { data: orders, error: orderError } = await supabase
+                        .from("orders")
+                        .select("*")
+                        .eq("project_id", id)
+                        .eq("user_id", user.id)
+                        .eq("status", "paid") // Ensure we check for 'paid' status
+                        .limit(1);
 
-                const order = orders?.[0];
+                    if (orderError) throw orderError;
+
+                    order = orders?.[0];
+
+                    if (!order && attempts < maxAttempts - 1) {
+                        // Wait 1 second before retrying (webhook might still be processing)
+                        await new Promise(resolve => setTimeout(resolve, 1000));
+                    }
+
+                    attempts++;
+                }
 
                 if (order) {
                     setHasAccess(true);

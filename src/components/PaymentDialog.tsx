@@ -85,13 +85,15 @@ const PaymentDialog = ({ open, onOpenChange, projectTitle, amount, projectId }: 
         // Callback URL for fallback (optional, but good for some flows)
 
 
-        handler: function (response: any) {
+        handler: async function (response: any) {
           console.log("Payment success (Frontend), relying on Webhook for verification...", response);
-          toast.success("Payment Successful! Processing...");
+          toast.success("Payment Successful! Verifying...");
 
-          // Optimistic redirect to download page (or success page)
-          // The Webhook will handle the DB insertion in the background.
-          // We use window.location.href to force a navigation.
+          // Give webhook a moment to process (2 seconds)
+          // This helps ensure the order status is updated before we check on the download page
+          await new Promise(resolve => setTimeout(resolve, 2000));
+
+          // Redirect to download page
           window.location.href = `/download/${projectId}`;
         },
         modal: {
