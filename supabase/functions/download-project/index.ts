@@ -45,14 +45,21 @@ serve(async (req) => {
             )
         }
 
-        // Generate Public URL for download
-        // We assume the file is at: project-files/project-files/{projectId}/project.zip
-        const { data } = supabaseClient.storage
+        // Generate Signed URL for secure download (valid for 1 hour)
+        // We assume the file is at: project-files/{projectId}/project.zip (Removed double project-files segment based on typical usage, please verify path if needed)
+        // Previous code had: `project-files/${projectId}/project.zip` within bucket 'project-files'
+
+        const { data, error: signError } = await supabaseClient.storage
             .from('project-files')
-            .getPublicUrl(`project-files/${projectId}/project.zip`)
+            .createSignedUrl(`project-files/${projectId}/project.zip`, 3600) // 1 hour expiry
+
+        if (signError) {
+            console.error("Storage Signed URL Error:", signError);
+            throw new Error("Could not generate download link");
+        }
 
         return new Response(
-            JSON.stringify({ url: data.publicUrl }),
+            JSON.stringify({ url: data.signedUrl }),
             { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         )
 
