@@ -1,59 +1,54 @@
 # Payment System Architecture - Final Fix
 
 ## Issue Resolved
-Users were experiencing "Access Denied" after successful payment because the application was relying solely on the Razorpay Webhook to update the order status. Webhooks can be slightly delayed or fail to reach the server (especially in local dev/tunnel setups), causing a race condition where the user reached the Download page before the database was updated.
+Users were experiencing "Access Denied" after successful payment because:
+1. **Timing**: The webhook was too slow to update the database before the user reached the success page.
+2. **Runtime Error**: The Edge Functions were failing with `[ERR_MODULE_NOT_FOUND] Cannot find module 'npm:crypto'`. This prevented *any* verification from happening (both webhook and client-side).
 
 ## Implementation: Dual Verification System
 
-We have implemented a robust **Dual Verification System** to ensure 100% reliability.
+We have implemented a robust **Dual Verification System** and fixed the runtime environment issues.
 
-### 1. Immediate Client-Side Verification (Primary)
+### 1. Runtime Fix (Critical)
+The Supabase Edge Runtime (Deno) works best with `node:` specifiers for built-in Node modules.
+- **Old**: `import crypto from "npm:crypto"` ❌ (Causes crash)
+- **New**: `import { createHmac } from "node:crypto"` ✅ (Native support)
+
+This fix was applied to BOTH `verify-payment` and `verify-user-payment`.
+
+### 2. Immediate Client-Side Verification (Primary)
 This guarantees instant access for the user immediately after they pay.
 
-- **New Edge Function**: `verify-user-payment`
+- **Function**: `verify-user-payment`
 - **Trigger**: Called by frontend (`PaymentDialog.tsx`) immediately upon payment success.
 - **Method**: Verifies the `razorpay_signature` using `RAZORPAY_KEY_SECRET`.
 - **Action**: Updates the order status to `'paid'` in the database instantly.
-- **Benefit**: Zero delay. User is redirected only after database confirms the update.
 
-```typescript
-// Frontend Logic (PaymentDialog.tsx)
-const { data } = await supabase.functions.invoke('verify-user-payment', {
-    body: {
-        orderId: response.razorpay_order_id,
-        paymentId: response.razorpay_payment_id,
-        signature: response.razorpay_signature
-    }
-});
-// Redirects only after this succeeds
-```
-
-### 2. Webhook Verification (Secondary/Backup)
-This ensures data consistency and handles edge cases (e.g., user closes tab efficiently).
-
+### 3. Webhook Verification (Secondary/Backup)
 - **Function**: `verify-payment`
 - **Trigger**: Called by Razorpay Server asynchronously.
 - **Method**: Verifies webhook signature using `RAZORPAY_WEBHOOK_SECRET`.
-- **Action**: Inserts payment record into `payments` table and ensures `orders` status is `'paid'`.
+- **Action**: Inserts payment record and ensures order status is `'paid'`.
 
 ## Files Created/Modified
 
-1.  **`supabase/functions/verify-user-payment/index.ts`** (New)
-    *   Handles immediate signature verification and order status update.
+1.  **`supabase/functions/verify-user-payment/index.ts`**
+    *   Uses `node:crypto`.
+    *   Handles immediate signature verification.
     
-2.  **`src/components/PaymentDialog.tsx`** (Modified)
-    *   Now calls `verify-user-payment` before redirecting.
-    *   Added error handling to fallback gracefully.
-
-3.  **`supabase/functions/verify-payment/index.ts`** (Modified in previous step)
+2.  **`supabase/functions/verify-payment/index.ts`**
+    *   Uses `node:crypto`.
     *   Standard webhook handler.
+
+3.  **`src/components/PaymentDialog.tsx`**
+    *   Calls `verify-user-payment` before redirecting.
 
 ## Verify Deployment
 
 1.  **Frontend**: The latest build includes the updated `PaymentDialog.tsx`.
 2.  **Edge Functions**:
-    *   `verify-user-payment`: **Deployed** ✅
-    *   `verify-payment`: **Deployed** ✅
+    *   `verify-user-payment`: **Deployed** ✅ (Fix Verified)
+    *   `verify-payment`: **Deployed** ✅ (Fix Verified)
 
 ## Testing
-The "Access Denied" error should be completely eliminated. When a user pays, the frontend explicitly waits for the confirmation from `verify-user-payment` before sending them to the download page. By the time they arrive, the order is guaranteed to be marked as `paid`.
+The "Access Denied" error should be eliminated. The Edge Function logs should no longer show "Cannot find module" errors.

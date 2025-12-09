@@ -1,6 +1,6 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import crypto from "npm:crypto";
+import { createHmac } from "node:crypto";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.38.5";
 
 serve(async (req) => {
@@ -11,8 +11,7 @@ serve(async (req) => {
 
         console.log("Webhook received:", { event: body.event, timestamp: new Date().toISOString() });
 
-        const expected = crypto
-            .createHmac("sha256", secret)
+        const expected = createHmac("sha256", secret)
             .update(JSON.stringify(body))
             .digest("hex");
 
@@ -60,7 +59,7 @@ serve(async (req) => {
         }
 
         return new Response(JSON.stringify({ success: true }), { status: 200 });
-    } catch (error) {
+    } catch (error: any) {
         console.error("Webhook processing error:", error);
         return new Response(
             JSON.stringify({ success: false, error: error.message }),
