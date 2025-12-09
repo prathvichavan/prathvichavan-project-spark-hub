@@ -104,7 +104,7 @@ const PaymentDialog = ({ open, onOpenChange, projectTitle, amount, projectId }: 
                 "Accept": "application/json"
               },
               body: JSON.stringify({
-                order_id: response.razorpay_order_id,
+                razorpay_order_id: response.razorpay_order_id,
                 razorpay_payment_id: response.razorpay_payment_id,
                 razorpay_signature: response.razorpay_signature,
                 user_id: user?.id
@@ -114,7 +114,7 @@ const PaymentDialog = ({ open, onOpenChange, projectTitle, amount, projectId }: 
             const data = await res.json();
             console.log("Verification response:", data);
 
-            if (!data.verified) {
+            if (!data.verified && data.status !== 'success') {
               throw new Error(data.error || "Payment not verified");
             }
 

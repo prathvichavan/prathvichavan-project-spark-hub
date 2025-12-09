@@ -11,35 +11,57 @@ const corsHeaders: Record<string, string> = {
 };
 
 serve(async (req: Request) => {
+    // Handle CORS preflight
     if (req.method === "OPTIONS") {
         return new Response("ok", { headers: corsHeaders });
     }
 
     try {
-        const { order_id, razorpay_payment_id, razorpay_signature, user_id } = await req.json();
+        const body = await req.json();
+        console.log("Received verification payload:", body);
 
-        console.log("Verifying payment:", { order_id, razorpay_payment_id });
+        // Normalize fields from Frontend OR Webhook
+        // Frontend sends: razorpay_order_id, razorpay_payment_id, razorpay_signature
+        // Webhook sends: event, payload.payment.entity (payment_id, order_id)
+
+        let r_order_id = body.razorpay_order_id || body.order_id;
+        let r_payment_id = body.razorpay_payment_id || body.payment_id;
+        let r_signature = body.razorpay_signature || body.signature;
+
+        // Check if it is a Webhook event (simplified logic)
+        if (body.event && body.payload?.payment?.entity) {
+            console.log("Processing as Webhook Event");
+            const entity = body.payload.payment.entity;
+            r_order_id = entity.order_id;
+            r_payment_id = entity.id;
+            // Webhook verification uses a different secret and header signature (x-razorpay-signature)
+            // This function currently focuses on Frontend Verification logic as per prompt primary task.
+            // However, we extracted IDs if we need to blindly update.
+            // For now, we proceed with the Frontend explicit verification flow.
+        }
+
+        if (!r_order_id || !r_payment_id || !r_signature) {
+            throw new Error("Missing required payment fields (razorpay_payment_id, razorpay_order_id, razorpay_signature)");
+        }
 
         const secret = Deno.env.get("RAZORPAY_KEY_SECRET");
         if (!secret) {
             throw new Error("Missing server Razorpay secret");
         }
 
-        const generatedSignature = await generateHmacSha256(order_id + "|" + razorpay_payment_id, secret);
+        // Verify Signature: order_id + "|" + payment_id
+        const generatedSignature = await generateHmacSha256(r_order_id + "|" + r_payment_id, secret);
 
-        console.log("Signature comparison:", {
-            generatedSignature,
-            razorpay_signature,
-            match: generatedSignature === razorpay_signature
-        });
-
-        if (generatedSignature !== razorpay_signature) {
-            return new Response(JSON.stringify({ verified: false, error: "Signature mismatch" }), {
+        if (generatedSignature !== r_signature) {
+            console.error("Signature mismatch:", { generated: generatedSignature, received: r_signature });
+            // Always return 200 with error status to prevent client side generic errors
+            return new Response(JSON.stringify({ status: "failure", verified: false, error: "Signature mismatch" }), {
                 headers: corsHeaders,
                 status: 200
             });
         }
 
+        // Update Database
         const supabaseAdmin = createClient(
             Deno.env.get("SUPABASE_URL") ?? "",
             Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
@@ -51,36 +73,36 @@ serve(async (req: Request) => {
             }
         );
 
-        // CRITICAL FIX: Database uses 'razorpay_order_id' column, not 'order_id'
         const { data, error } = await supabaseAdmin
             .from("orders")
             .update({
                 status: "paid",
-                payment_id: razorpay_payment_id,
+                payment_id: r_payment_id,
                 updated_at: new Date().toISOString()
             })
-            .eq("razorpay_order_id", order_id)  // Match on razorpay_order_id column
+            .eq("razorpay_order_id", r_order_id)
             .select()
             .single();
 
         if (error) {
             console.error("DB Error:", error);
-            return new Response(JSON.stringify({ verified: false, error: "Database error: " + error.message }), {
+            return new Response(JSON.stringify({ status: "failure", verified: false, error: "Database error: " + error.message }), {
                 headers: corsHeaders,
                 status: 200
             });
         }
 
-        console.log("Payment verified successfully:", data);
+        console.log("Payment verified & DB updated:", data);
 
-        return new Response(JSON.stringify({ verified: true, order: data }), {
+        // Return Success
+        return new Response(JSON.stringify({ status: "success", verified: true, order: data }), {
             headers: corsHeaders,
             status: 200
         });
 
     } catch (error: any) {
         console.error("Function Error:", error);
-        return new Response(JSON.stringify({ verified: false, error: error.message }), {
+        return new Response(JSON.stringify({ status: "failure", verified: false, error: error.message }), {
             headers: corsHeaders,
             status: 200
         });
