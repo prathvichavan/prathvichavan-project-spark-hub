@@ -17,6 +17,9 @@ import About from "./pages/About";
 import DeliveryPolicy from "./pages/DeliveryPolicy";
 import Blog from "./pages/Blog";
 import BlogArticle from "./pages/BlogArticle";
+import Disclaimer from "./pages/Disclaimer";
+import FAQ from "./pages/FAQ";
+import HowItWorks from "./pages/HowItWorks";
 
 import ScrollToTop from "./components/ScrollToTop";
 
@@ -51,6 +54,9 @@ const App = () => (
             <Route path="/refund" element={<Refund />} />
             <Route path="/refund-policy" element={<Refund />} />
             <Route path="/delivery-policy" element={<DeliveryPolicy />} />
+            <Route path="/disclaimer" element={<Disclaimer />} />
+            <Route path="/faq" element={<FAQ />} />
+            <Route path="/how-it-works" element={<HowItWorks />} />
             <Route path="/about" element={<About />} />
             <Route path="/blog" element={<Blog />} />
             <Route path="/blog/:slug" element={<BlogArticle />} />

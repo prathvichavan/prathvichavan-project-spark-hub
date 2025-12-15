@@ -50,6 +50,16 @@ const Footer = () => {
                   Blog
                 </Link>
               </li>
+              <li>
+                <Link to="/how-it-works" className="text-sm text-muted-foreground hover:text-primary transition-all duration-300 hover:translate-x-1 inline-block">
+                  How It Works
+                </Link>
+              </li>
+              <li>
+                <Link to="/faq" className="text-sm text-muted-foreground hover:text-primary transition-all duration-300 hover:translate-x-1 inline-block">
+                  FAQ
+                </Link>
+              </li>
             </ul>
           </div>
 
@@ -113,6 +123,9 @@ const Footer = () => {
               </Link>
               <Link to="/delivery-policy" className="text-sm text-muted-foreground hover:text-primary transition-all duration-300 hover:scale-110">
                 Delivery Policy
+              </Link>
+              <Link to="/disclaimer" className="text-sm text-muted-foreground hover:text-primary transition-all duration-300 hover:scale-110">
+                Disclaimer
               </Link>
             </div>
           </div>

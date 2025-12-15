@@ -1714,5 +1714,172 @@ Human Resources is shifting from intuition-based to data-driven decision making.
 An HR dashboard turns raw data into actionable insights, helping organizations retain talent and improve culture.
 
 Download the [Power BI template](/projects?category=powerbi) to visualize your own HR data.`
+    },
+    {
+        id: "11",
+        slug: "deploy-web-project-guide",
+        title: "How to Deploy Your Web Project: A Complete Guide for Students",
+        description: "Step-by-step guide to deploying React, Node.js, and Python projects using Vercel, Netlify, and Render. Learn how to take your project live.",
+        category: "Web Development",
+        author: "TechProjectHub",
+        publishDate: "2024-12-14",
+        readingTime: 12,
+        featuredImage: "/images/blog/deployment-guide.jpg",
+        tags: ["Deployment", "Vercel", "Netlify", "Heroku"],
+        content: `# How to Deploy Your Web Project: A Complete Guide for Students
+
+Building a project is only half the battle; showing it to the world is where the real value lies. This guide covers how to deploy common student projects for free.
+
+## Why Deployment Matters
+
+- **Portfolio**: A live link is worth 1000 lines of code in a resume.
+- **Testing**: Real-world usage reveals bugs you missed locally.
+- **Sharing**: Easily share your work with recruiters and friends.
+
+## 1. Deploying Frontend (React/Vue/HTML)
+
+For static sites or Single Page Applications (SPAs), **Vercel** and **Netlify** are the best free options.
+
+### Option A: Vercel (Best for Next.js/React)
+
+1. **Push code to GitHub**: Ensure your project is in a GitHub repository.
+2. **Sign up on Vercel**: Login with GitHub.
+3. **Import Project**: Select your repository.
+4. **Configure Build**:
+   - Framework Preset: Create React App / Vite
+   - Build Command: \`npm run build\`
+   - Output Directory: \`dist\` or \`build\`
+5. **Deploy**: Click "Deploy" and wait for the green URL!
+
+### Option B: Netlify (Drag & Drop)
+
+1. Run \`npm run build\` in your terminal.
+2. A \`dist\` or \`build\` folder will be created.
+3. Drag and drop this folder onto the Netlify dashboard.
+4. Your site is live instantly!
+
+## 2. Deploying Backend (Node.js/Python/Go)
+
+Backends need a server to run continuously. **Render** and **Railway** are great choices.
+
+### Deploying Node.js on Render
+
+1. Create a \`render.yaml\` or use the dashboard.
+2. Select **Web Service**.
+3. Connect GitHub repo.
+4. Settings:
+   - Environment: Node
+   - Build Command: \`npm install\`
+   - Start Command: \`node index.js\` or \`npm start\`
+5. **Environment Variables**: Add your \`MONGO_URI\` or \`API_KEYS\` in the "Environment" tab.
+
+### Deploying Python (Flask/Django) on Render
+
+1. Ensure you have a \`requirements.txt\`.
+   \`\`\`bash
+   pip freeze > requirements.txt
+   \`\`\`
+2. Add a \`Procfile\` (optional but recommended for Gunicorn):
+   \`\`\`txt
+   web: gunicorn app:app
+   \`\`\`
+3. Select Python environment in Render.
+4. Deployment proceeds similarly to Node.js.
+
+## 3. Database Hosting
+
+You need a cloud database; your local MongoDB or MySQL won't work on the cloud.
+
+- **MongoDB**: Use **MongoDB Atlas** (Free Tier).
+  - Create a cluster -> Network Access (Allow 0.0.0.0/0) -> Database Access (Create User).
+  - Get the connection string: \`mongodb+srv://<user>:<password>@cluster...\`
+- **PostgreSQL/MySQL**: Use **Supabase** or **Render** (Managed PostgreSQL). or **Neon.tech**
+
+## 4. Common Deployment Errors
+
+- **"Module Not Found"**: You forgot to push a file or it's in \`.gitignore\`.
+- **"Connection Refused"**: Your database IP whitelist is blocking the cloud server. Allow \`0.0.0.0/0\`.
+- **"App Crushed"**: Check logs! Usually a missing environment variable.
+
+## Conclusion
+
+Deploying your project makes it "real". It shows recruiters you understand the full software lifecycle. Start with Vercel for frontend and Render for backend – it's the easiest path for students.
+
+Check out our [web projects](/projects?category=web) which come with deployment instructions included!`
+    },
+    {
+        id: "12",
+        slug: "mistakes-to-avoid-final-year-project",
+        title: "Top 10 Mistakes to Avoid in Your Final Year Project",
+        description: "Don't let these common errors ruin your final year project. Learn how to choose, execute, and present your project successfully.",
+        category: "Career Guidance",
+        author: "TechProjectHub",
+        publishDate: "2024-12-15",
+        readingTime: 10,
+        featuredImage: "/images/blog/project-mistakes.jpg",
+        tags: ["Final Year", "Guide", "Tips"],
+        content: `# Top 10 Mistakes to Avoid in Your Final Year Project
+
+Your final year project is the most significant academic milestone. It can make or break your GPA and your first job interview. Here are the top mistakes students make and how to avoid them.
+
+## 1. Choosing a "Common" Topic
+
+**The Mistake**: Picking "Library Management System" or "Hospital Management System" without adding anything new.
+**The Fix**: If you choose a common topic, add a unique twist. Add AI recommendations to the library system or blockchain records to the hospital system.
+
+## 2. Underestimating the Scope (Scope Creep)
+
+**The Mistake**: Promising to build "Amazon + Facebook + Uber" in 3 months.
+**The Fix**: Start with a **Minimum Viable Product (MVP)**. Build the core features first. You can always add more features later if time permits.
+
+## 3. Dealing with "Spaghetti Code"
+
+**The Mistake**: Writing all code in one file or having no structure.
+**The Fix**: Use standard architectures (MVC, MVT). Separate your frontend, backend, and database logic. Comment your code!
+
+## 4. Ignoring Documentation
+
+**The Mistake**: Leaving documentation for the last night.
+**The Fix**: Document as you code. Keep a "Developer Diary". It makes writing the final report 10x easier.
+
+## 5. Hardcoding Credentials
+
+**The Mistake**: Pushing API keys and database passwords to GitHub.
+**The Fix**: Use **Environment Variables** (\`.env\` files). Never commit secrets to version control.
+
+## 6. Not Testing on Different Devices
+
+**The Mistake**: "It works on my machine!"
+**The Fix**: Test your web app on mobile, different browsers, and ideally on a friend's computer.
+
+## 7. Poor UI/UX
+
+**The Mistake**: Great backend, but the interface looks like Windows 95.
+**The Fix**: Use modern UI libraries like **Tailwind CSS**, **Material UI**, or **Shadcn UI**. A good looking project sells itself.
+
+## 8. Waiting Too Long to Integrate
+
+**The Mistake**: Frontend team and Backend team work separately for months and try to connect in the last week.
+**The Fix**: Integrate early! Connect your frontend to the API as soon as the first endpoint is ready.
+
+## 9. Lack of Error Handling
+
+**The Mistake**: The app crashes if a user enters a wrong email.
+**The Fix**: Implement proper try-catch blocks. Show user-friendly error messages (e.g., "Invalid email format") instead of a white screen.
+
+## 10. Copy-Pasting Without Understanding
+
+**The Mistake**: Using code you found online but can't explain during the viva.
+**The Fix**: It's okay to use resources, but **understand every line**. If the external examiner points to a line, you must know what it does.
+
+## Bonus: The Backup Rule
+
+Always, ALWAYS have backups. Push to GitHub daily. Keep a copy on Google Drive. Hardware failure is real.
+
+## Conclusion
+
+Avoid these pitfalls, and you'll have a project that not only gets you an 'A' but also lands you a job.
+
+Need inspiration? Browse our [unique project ideas](/projects) to get started on the right track!`
     }
 ];
